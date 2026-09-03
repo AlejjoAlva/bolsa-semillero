@@ -3,12 +3,13 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Participant from './routes/Participant'
 import Display from './routes/Display'
 import Host from './routes/Host'
-import { ensureAnonAuth } from './lib/firebase'
+import { CONFIG_FALTANTE, ensureAnonAuth } from './lib/firebase'
 
 export default function App() {
   const [estado, setEstado] = useState('cargando') // cargando | listo | error
 
   useEffect(() => {
+    if (CONFIG_FALTANTE.length > 0) return
     ensureAnonAuth().then(
       () => setEstado('listo'),
       (err) => {
@@ -17,6 +18,20 @@ export default function App() {
       },
     )
   }, [])
+
+  // Build hecho sin .env: no tiene sentido intentar conectarse a ningún lado.
+  if (CONFIG_FALTANTE.length > 0) {
+    return (
+      <main className="pantalla">
+        <div className="card">
+          <p className="error">
+            Falta config de Firebase en el build: {CONFIG_FALTANTE.join(', ')}. Llena el archivo{' '}
+            <code>.env</code> (ver README §1.2) y vuelve a correr <code>npm run build</code>.
+          </p>
+        </div>
+      </main>
+    )
+  }
 
   if (estado === 'cargando') {
     return (

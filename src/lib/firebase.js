@@ -3,17 +3,27 @@ import { getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator } f
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 
 // ---------------------------------------------------------------------------
-// PEGA AQUÍ TU CONFIG DE FIREBASE (o mejor: llena el archivo .env, ver README)
-// Consola de Firebase > Configuración del proyecto > Tus apps > Config
+// La config sale del archivo .env (ver README §1.2). No hay valores por defecto
+// a propósito: si falta alguno, la app lo dice en pantalla en vez de arrancar
+// apuntando a un proyecto que no existe.
 // ---------------------------------------------------------------------------
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FB_API_KEY ?? 'demo-api-key',
-  authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN ?? 'demo-bolsa.firebaseapp.com',
-  projectId: import.meta.env.VITE_FB_PROJECT_ID ?? 'demo-bolsa',
-  storageBucket: import.meta.env.VITE_FB_STORAGE_BUCKET ?? 'demo-bolsa.appspot.com',
-  messagingSenderId: import.meta.env.VITE_FB_SENDER_ID ?? '000000000000',
-  appId: import.meta.env.VITE_FB_APP_ID ?? '1:000000000000:web:0000000000000000',
-}
+const CAMPOS = [
+  ['apiKey', 'VITE_FB_API_KEY', import.meta.env.VITE_FB_API_KEY],
+  ['authDomain', 'VITE_FB_AUTH_DOMAIN', import.meta.env.VITE_FB_AUTH_DOMAIN],
+  ['projectId', 'VITE_FB_PROJECT_ID', import.meta.env.VITE_FB_PROJECT_ID],
+  ['storageBucket', 'VITE_FB_STORAGE_BUCKET', import.meta.env.VITE_FB_STORAGE_BUCKET],
+  ['messagingSenderId', 'VITE_FB_SENDER_ID', import.meta.env.VITE_FB_SENDER_ID],
+  ['appId', 'VITE_FB_APP_ID', import.meta.env.VITE_FB_APP_ID],
+]
+
+/** Nombres de las variables de .env que faltaron en el build. App.jsx lo muestra en pantalla. */
+export const CONFIG_FALTANTE = CAMPOS.filter(([, , valor]) => !valor).map(([, env]) => env)
+
+// El placeholder evita que initializeApp reviente al importar el módulo: cuando falta config,
+// App.jsx corta antes de que se haga cualquier llamada de red.
+const firebaseConfig = Object.fromEntries(
+  CAMPOS.map(([clave, env, valor]) => [clave, valor || `FALTA_${env}`]),
+)
 
 export const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)

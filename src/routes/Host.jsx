@@ -15,12 +15,27 @@ import {
   useSession,
 } from '../lib/data'
 
-const PASSWORD = import.meta.env.VITE_HOST_PASSWORD ?? 'cambia-esta-clave'
+const PASSWORD = import.meta.env.VITE_HOST_PASSWORD
 const CLAVE_SESION = 'bolsa_host_ok'
 
 function Login({ onEntrar }) {
   const [valor, setValor] = useState('')
   const [error, setError] = useState('')
+
+  // Sin contraseña configurada no hay puerta que abrir: mejor decirlo que dejar entrar a todos.
+  if (!PASSWORD) {
+    return (
+      <main className="pantalla">
+        <div className="card">
+          <h2>Panel de host</h2>
+          <p className="error">
+            Falta <code>VITE_HOST_PASSWORD</code> en el archivo <code>.env</code>. Llénalo y vuelve
+            a correr <code>npm run build</code> antes de desplegar.
+          </p>
+        </div>
+      </main>
+    )
+  }
 
   function enviar(e) {
     e.preventDefault()

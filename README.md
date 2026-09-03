@@ -296,9 +296,10 @@ detecta que el ticker guardado ya no existe y devuelve a la gente al formulario.
 - **La contraseña de `/host` queda escrita en el JavaScript público.** Vite reemplaza las `VITE_*`
   dentro del bundle en el `npm run build`, así que cualquiera puede leerla con Ver código fuente.
   Cámbiala por algo desechable, nunca por una contraseña que uses en otro lado.
-- Ojo con los *fallbacks* silenciosos de `Host.jsx` y `lib/firebase.js` (`?? 'cambia-esta-clave'`,
-  `?? 'demo-bolsa'`): si compilas sin `.env`, el sitio sale con la contraseña de ejemplo y
-  apuntando a un proyecto que no existe, sin ningún error visible.
+- Los *fallbacks* silenciosos de `Host.jsx` y `lib/firebase.js` se quitaron el 2026-09-03: si
+  compilas sin `.env`, la app muestra en pantalla qué variables faltan en vez de salir con la
+  contraseña de ejemplo apuntando a un proyecto inexistente. Verificado compilando sin `.env`:
+  el bundle ya no contiene `cambia-esta-clave` ni `demo-bolsa`.
 - No hay límites de cuota: la URL es escribible por cualquiera con internet, no solo por la sala.
   Para 30-40 personas el plan gratuito sobra. Después del evento conviene dejar las reglas en
   solo lectura.
