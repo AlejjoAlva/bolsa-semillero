@@ -18,6 +18,30 @@ Firestore, protegida solo por las reglas de `firestore.rules`.
 
 ---
 
+---
+
+## 🚨 Si algo falla DURANTE el evento
+
+**Runbook operativo** (checklist previo, síntoma → causa → acción, prohibiciones del día):
+https://claude.ai/code/artifact/5762dbb1-53a6-42bb-8343-fbb7133d569d
+
+Lo primero, casi siempre: **recarga la página**. Es seguro en las tres pantallas — el estado vive
+en Firestore, no en el navegador, y no se pierde nada.
+
+El fallo más probable no es del código: es agotar el cupo de **100 cuentas anónimas por hora y por
+IP**. Si varias personas no logran registrarse a la vez, que se registren con **datos móviles** en
+vez del wifi del salón.
+
+**Desplegar en caliente es el último recurso**, no el primero. Si aun así hace falta:
+
+```bash
+firebase login --reauth        # las credenciales del CLI caducan; es interactivo
+npm test && npm run lint       # nunca desplegar sin esto
+npm run build && firebase deploy --only hosting
+```
+
+Para volver atrás, `git log` y `git revert <commit>`, luego build y deploy otra vez.
+
 ## 0. Preparar esta máquina (antes que nada)
 
 > ✅ **Ya hecho en esta máquina** (2026-09-03): nvm + Node 22.23.2 + firebase-tools 15.29.0.
