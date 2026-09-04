@@ -1,8 +1,8 @@
 # La Bolsa — UACE
 
 "La Bolsa": web app para la actividad de integración de la Unidad de Análisis en Ciencias Económicas.
-Cada persona del salón cotiza como una acción; los demás invierten en ella tras hablarle. cada persona sale a bolsa como una "acción" y los demás
-invierten en ella después de hablarle en persona y acertar un mini-quiz sobre sus respuestas privadas.
+Cada persona del salón sale a bolsa como una "acción" y los demás invierten en ella después de
+hablarle en persona y acertar un mini-quiz sobre sus respuestas privadas.
 
 Tres rutas, una sola SPA:
 

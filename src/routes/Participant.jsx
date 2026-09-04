@@ -116,7 +116,7 @@ export default function Participant() {
   // El ticker se declara antes que el roster porque el roster escucha en vivo
   // el documento propio y necesita saber cuál es.
   const [ticker, setTicker] = useState(() => localStorage.getItem(CLAVE_LOCAL) ?? null)
-  const { participants, cargado, recargar } = useRoster(ticker, session?.activos_count)
+  const { participants, cargado, propioResuelto, recargar } = useRoster(ticker, session?.activos_count)
   const [actualizando, setActualizando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [objetivo, setObjetivo] = useState(null)
@@ -151,12 +151,16 @@ export default function Participant() {
   }, [session?.generacion])
 
   // El ticker guardado ya no existe (p. ej. se limpió la base): volvemos al registro.
+  // Solo se descarta el ticker cuando el listener del documento propio ha
+  // confirmado que NO existe. Comprobarlo contra el listado sería una carrera:
+  // recién registrado, el listado es todavía la foto anterior y borraríamos un
+  // registro que sí existe, dejando a la persona atrapada en el formulario.
   useEffect(() => {
-    if (ticker && cargado && !yo) {
+    if (ticker && cargado && propioResuelto && !yo) {
       localStorage.removeItem(CLAVE_LOCAL)
       setTicker(null)
     }
-  }, [ticker, cargado, yo])
+  }, [ticker, cargado, propioResuelto, yo])
 
   // El celular no escucha la lista en vivo (ver useRoster): se refresca sola
   // cuando alguien entra o sale, pero este botón deja pedirla a mano.
@@ -232,6 +236,7 @@ export default function Participant() {
           yo={yo}
           target={objetivo}
           participants={participants}
+          ronda={ronda}
           onCerrar={() => setObjetivo(null)}
         />
         <Firma />

@@ -599,7 +599,7 @@ export default function Host() {
 
       <EmpezarDeCero
         ocupado={ocupado}
-        cuantos={participants.length}
+        cuantos={enMercado.length}
         onEmpezar={() => ejecutar(() => empezarDeCero())}
       />
       <Firma />

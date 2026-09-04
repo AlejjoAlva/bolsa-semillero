@@ -9,6 +9,7 @@ import {
   COMISION_LIQUIDAR,
   PUNTOS_BASE,
   RACHA_CADA,
+  RUMOR_MINUTOS,
   UMBRAL_SOBRECOMPRA,
 } from '../lib/puntaje'
 
@@ -20,6 +21,11 @@ import {
  * Las cifras salen de las constantes de `puntaje.js`, no escritas a mano, para
  * que el instructivo no pueda contradecir a las reglas que de verdad corren.
  */
+// La ventana del rumor sale de la constante, no escrita a mano: si cambia
+// RUMOR_MINUTOS, el instructivo cambia con ella.
+const VENTANA_RUMOR =
+  RUMOR_MINUTOS % 1 === 0 ? `${RUMOR_MINUTOS} minutos` : `${Math.round(RUMOR_MINUTOS * 60)} segundos`
+
 export default function Instrucciones({ abiertaAlPrincipio = false }) {
   const [abierta, setAbierta] = useState(abiertaAlPrincipio)
 
@@ -107,8 +113,9 @@ export default function Instrucciones({ abiertaAlPrincipio = false }) {
 
           <p className="titulillo">Los rumores de sector</p>
           <p>
-            De vez en cuando corre el rumor de que un área se va a desplomar. Tienes unos minutos
-            para decidir en tu celular: <strong>mantener</strong> o <strong>liquidar</strong>. No
+            De vez en cuando corre el rumor de que un área se va a desplomar. Tienes{' '}
+            <strong>{VENTANA_RUMOR}</strong> para decidir en tu celular:{' '}
+            <strong>mantener</strong> o <strong>liquidar</strong>. No
             elegir cuenta como mantener. Después, la pantalla grande sortea si era cierto.
           </p>
           <ul className="lista-reglas">

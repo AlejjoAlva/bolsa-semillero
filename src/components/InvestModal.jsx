@@ -13,7 +13,7 @@ import { etiquetaArea } from '../lib/data'
  * Flujo del quiz: pregunta -> resultado. La pregunta se arma una sola vez, al
  * abrir el modal, para que no cambie mientras la persona está eligiendo.
  */
-export default function InvestModal({ yo, target, participants, onCerrar }) {
+export default function InvestModal({ yo, target, participants, ronda, onCerrar }) {
   // `participants` cambia con cada snapshot de Firestore; si el quiz dependiera
   // de él, la pregunta se rebarajaría en medio de la elección.
   const [quiz] = useState(() => armarQuiz(target, participants))
@@ -28,8 +28,10 @@ export default function InvestModal({ yo, target, participants, onCerrar }) {
 
     if (!esCorrecta(quiz, seleccion)) {
       const perdidos = await fallarInversion(yo.ticker, apuesta)
-      // Que la pérdida se vea en el tablero, igual que se ven las ganancias.
-      registrarFallo(yo.ticker, perdidos)
+      // Que la pérdida se vea en el tablero, igual que se ven las ganancias. No
+      // se espera —el log es informativo y no debe frenar la respuesta— pero sí
+      // se recoge el error para no dejar una promesa suelta.
+      registrarFallo(yo.ticker, perdidos, ronda).catch((e) => console.error('registrarFallo', e))
       setResultado({
         ok: false,
         mensaje:

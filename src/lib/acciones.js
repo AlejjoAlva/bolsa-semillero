@@ -320,9 +320,11 @@ export async function fallarInversion(investorTicker, apuesta = false) {
  * cuando de verdad se perdieron puntos: fallar sin apostar no cuesta nada y
  * llenaría el tablero de ruido tapando lo que sí importa.
  */
-export async function registrarFallo(investorTicker, perdidos) {
+export async function registrarFallo(investorTicker, perdidos, ronda) {
   if (!perdidos) return
-  await escribirLog('correccion', `📉 $${investorTicker} apostó y falló: −${perdidos} pts`)
+  // La ronda se pasa desde la pantalla: sin ella, `escribirLog` la averigua con
+  // una lectura de la sesión en CADA respuesta fallida.
+  await escribirLog('correccion', `📉 $${investorTicker} apostó y falló: −${perdidos} pts`, ronda)
 }
 
 // --- Controles del host -----------------------------------------------------
@@ -442,11 +444,6 @@ export async function reiniciarPartida() {
 }
 
 /**
- * Cierre volátil: el ajuste final del anfitrión. Las acciones más compradas se
- * desinflan y las que nadie buscó se revalorizan. Se aplica una sola vez por
- * ronda; devuelve a quiénes tocó.
- */
-/**
  * Empezar de cero: retira a TODO el mundo del mercado y obliga a registrarse de
  * nuevo. Pensado para dejar la app limpia entre ensayos.
  *
@@ -472,25 +469,12 @@ export async function empezarDeCero() {
   const nuevaRonda = (previa.ronda ?? 1) + 1
   const nuevaGeneracion = (previa.generacion ?? 0) + 1
 
-  // Un lote admite 500 escrituras. Se trocea por si algún día hay más gente.
-  const docs = participantesSnap.docs
-  for (let i = 0; i < docs.length; i += 400) {
-    const lote = writeBatch(db)
-    for (const d of docs.slice(i, i + 400)) {
-      lote.update(d.ref, {
-        activo: false,
-        points: 0,
-        received_count: 0,
-        streak: 0,
-        inversiones_hechas: 0,
-        correccion_ronda: null,
-        postura_rumor: null,
-        postura_rumor_id: null,
-      })
-    }
-    await lote.commit()
-  }
-
+  // La sesión va PRIMERO, y no es un detalle. Si se retirara a la gente antes
+  // y luego fallara esta escritura, cada celular conservaría su ticker con el
+  // documento ya en `activo: false` y quedaría atrapado en la pantalla de "el
+  // anfitrión te sacó del mercado", sin forma de volver al registro. Al revés,
+  // si falla el retiro, todos vuelven al formulario y el anfitrión solo tiene
+  // que volver a pulsar el botón.
   await setDoc(
     sessionRef(),
     {
@@ -510,6 +494,25 @@ export async function empezarDeCero() {
     { merge: true },
   )
 
+  // Un lote admite 500 escrituras. Se trocea por si algún día hay más gente.
+  const docs = participantesSnap.docs
+  for (let i = 0; i < docs.length; i += 400) {
+    const lote = writeBatch(db)
+    for (const d of docs.slice(i, i + 400)) {
+      lote.update(d.ref, {
+        activo: false,
+        points: 0,
+        received_count: 0,
+        streak: 0,
+        inversiones_hechas: 0,
+        correccion_ronda: null,
+        postura_rumor: null,
+        postura_rumor_id: null,
+      })
+    }
+    await lote.commit()
+  }
+
   await escribirLog(
     'reinicio',
     `🧹 Todo a cero: ${docs.length} registros retirados. Hay que volver a registrarse.`,
@@ -518,6 +521,11 @@ export async function empezarDeCero() {
   return { retirados: docs.length, ronda: nuevaRonda, generacion: nuevaGeneracion }
 }
 
+/**
+ * Cierre volátil: el ajuste final del anfitrión. Las acciones más compradas se
+ * desinflan y las que nadie buscó se revalorizan. Se aplica una sola vez por
+ * ronda; devuelve a quiénes tocó.
+ */
 export async function cierreVolatil() {
   const [participantesSnap, sessionSnap] = await Promise.all([
     getDocs(collection(db, 'participants')),

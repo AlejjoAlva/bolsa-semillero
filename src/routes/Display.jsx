@@ -39,6 +39,11 @@ export default function Display() {
   const rumor = rumorDe(session)
   const [ahora, setAhora] = useState(() => Date.now())
   const resolviendo = useRef(false)
+  const cerrada = Boolean(session?.completada_por || session?.cerrada_por_host)
+  // Un rumor a medias al cerrar el mercado todavía reparte puntos. Si el podio
+  // saliera antes de resolverlo, la sala vería un ganador y luego el podio se
+  // recolocaría solo. Se espera a que no quede rumor pendiente.
+  const rumorPendiente = Boolean(rumor && !rumor.resuelto)
 
   // Un tick por segundo, solo mientras un rumor esté contando.
   useEffect(() => {
@@ -67,7 +72,6 @@ export default function Display() {
   }, [rumor, ahora])
 
   const abriendo = useTransicionA(session?.game_status, 'activo')
-  const cerrada = Boolean(session?.completada_por || session?.cerrada_por_host)
 
   return (
     <div className="display">
@@ -89,11 +93,11 @@ export default function Display() {
 
       <FraseMercado estado={session?.game_status ?? 'esperando'} />
 
-      {rumor && !cerrada && (
+      {rumorPendiente && (
         <RumorBanner rumor={rumor} restante={msHasta(rumor.expira_at, ahora)} />
       )}
 
-      {cerrada ? (
+      {cerrada && !rumorPendiente ? (
         <Podio participants={participants} session={session} />
       ) : (
         <>

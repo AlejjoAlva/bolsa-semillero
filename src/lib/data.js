@@ -131,6 +131,11 @@ const ESPERA_REINTENTO = 800
 export function useRoster(miTicker, activosCount) {
   const [roster, setRoster] = useState([])
   const [propio, setPropio] = useState(null)
+  // Si el listener del documento propio ya dio una respuesta para este ticker.
+  // Sin esto, justo después de registrarse el listado todavía es la foto previa
+  // y `yo` sale null, con lo que la pantalla creería que el registro no existe
+  // y borraría el ticker recién creado.
+  const [propioResuelto, setPropioResuelto] = useState(false)
   const [cargado, setCargado] = useState(false)
   const rosterRef = useRef([])
   const cuentaPrevia = useRef(undefined)
@@ -189,6 +194,7 @@ export function useRoster(miTicker, activosCount) {
   // El documento propio, en vivo: puntos, racha, inversiones recibidas, la
   // postura del rumor y el `activo` con el que el anfitrión puede sacarte.
   useEffect(() => {
+    setPropioResuelto(false)
     if (!miTicker) {
       setPropio(null)
       return undefined
@@ -198,6 +204,7 @@ export function useRoster(miTicker, activosCount) {
       (snap) => {
         marcarOk()
         setPropio(snap.exists() ? { ticker: snap.id, ...snap.data() } : null)
+        setPropioResuelto(true)
       },
       (err) => {
         console.error('roster: documento propio', err)
@@ -223,7 +230,7 @@ export function useRoster(miTicker, activosCount) {
     [roster, propio],
   )
 
-  return { participants, cargado, recargar: cargarTodo }
+  return { participants, cargado, propioResuelto, recargar: cargarTodo }
 }
 
 /**
