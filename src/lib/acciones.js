@@ -73,8 +73,16 @@ export async function registrarParticipante({ nombre, area, seniority, respuesta
   const uid = auth.currentUser?.uid
   if (!uid) throw new ErrorAmable('No hay sesión activa. Recarga la página e intenta de nuevo.')
 
+  // La generación en la que se inscribe esta persona. "Empezar de cero" sube el
+  // contador de la sesión, así que los registros de ensayos anteriores quedan
+  // con una generación vieja y el panel deja de mostrarlos. No se borra nada:
+  // las reglas no permiten borrar desde el cliente (ver README §4.5).
+  const sesionSnap = await getDoc(sessionRef())
+  const generacion = (sesionSnap.exists() ? sesionSnap.data().generacion : 0) ?? 0
+
   const datos = {
     uid,
+    generacion,
     name: nombre.trim(),
     area,
     seniority,

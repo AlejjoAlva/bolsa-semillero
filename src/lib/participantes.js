@@ -73,3 +73,17 @@ export function debeOlvidarRegistro(generacionSesion, generacionVista) {
   if (typeof generacionSesion !== 'number') return false
   return generacionSesion !== (generacionVista ?? 0)
 }
+
+/**
+ * Los registros de la partida vigente. "Empezar de cero" no borra —las reglas
+ * no lo permiten desde el cliente— sino que sube el contador de generación de
+ * la sesión, así que los inscritos en ensayos anteriores se quedan atrás con
+ * una generación menor y dejan de aparecer.
+ *
+ * Los documentos antiguos, de antes de que existiera el campo, cuentan como
+ * generación 0, que es también lo que vale una sesión recién creada.
+ */
+export function deLaGeneracion(participantes, generacionSesion) {
+  const actual = generacionSesion ?? 0
+  return participantes.filter((p) => (p?.generacion ?? 0) === actual)
+}

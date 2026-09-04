@@ -24,7 +24,7 @@ import {
 import { generarTicker, prefijoDe, idInversion } from '../src/lib/ticker.js'
 import { armarQuiz, esCorrecta } from '../src/lib/quiz.js'
 import {
-  activos, debeOlvidarRegistro, esActivo, fusionarRoster, marcaMasReciente,
+  activos, deLaGeneracion, debeOlvidarRegistro, esActivo, fusionarRoster, marcaMasReciente,
 } from '../src/lib/participantes.js'
 import { AREAS, etiquetaArea, nombreCortoArea, siglaArea } from '../src/lib/areas.js'
 
@@ -490,4 +490,32 @@ test('debeOlvidarRegistro: cualquier diferencia obliga a olvidar, incluso hacia 
   // Si se restaura una base vieja, la generación puede bajar. Sigue siendo
   // "otra partida", así que el celular se vuelve a registrar igual.
   assert.equal(debeOlvidarRegistro(1, 5), true)
+})
+
+// --- Generación: ocultar los ensayos anteriores ----------------------------
+
+test('deLaGeneracion: deja pasar solo a los de la generación vigente', () => {
+  const gente = [{ ticker: 'ANA10', generacion: 2 }, { ticker: 'BET60', generacion: 1 }]
+  assert.deepEqual(deLaGeneracion(gente, 2).map((p) => p.ticker), ['ANA10'])
+})
+
+test('deLaGeneracion: los documentos sin el campo son de la generación 0', () => {
+  const gente = [{ ticker: 'ANA10' }, { ticker: 'BET60', generacion: 1 }]
+  assert.deepEqual(deLaGeneracion(gente, 0).map((p) => p.ticker), ['ANA10'])
+})
+
+test('deLaGeneracion: una sesión sin generación equivale a la 0', () => {
+  const gente = [{ ticker: 'ANA10' }, { ticker: 'BET60', generacion: 3 }]
+  assert.deepEqual(deLaGeneracion(gente, undefined).map((p) => p.ticker), ['ANA10'])
+})
+
+test('deLaGeneracion: a quien el anfitrión sacó a mano NO lo oculta', () => {
+  // Sigue siendo de esta generación, solo que inactivo: tiene que verse en el
+  // panel para poder devolverlo al mercado.
+  const gente = [{ ticker: 'ANA10', generacion: 2, activo: false }]
+  assert.equal(deLaGeneracion(gente, 2).length, 1)
+})
+
+test('deLaGeneracion: listado vacío no revienta', () => {
+  assert.deepEqual(deLaGeneracion([], 5), [])
 })

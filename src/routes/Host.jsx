@@ -40,7 +40,7 @@ import {
   sectoresViables,
   umbralExpuestos,
 } from '../lib/puntaje'
-import { activos, esActivo } from '../lib/participantes'
+import { activos, deLaGeneracion, esActivo } from '../lib/participantes'
 
 const PASSWORD = import.meta.env.VITE_HOST_PASSWORD
 const CLAVE_SESION = 'bolsa_host_ok'
@@ -339,9 +339,13 @@ export default function Host() {
   }
 
   const estado = session?.game_status ?? 'esperando'
-  const enMercado = activos(participants)
+  // Los inscritos en ensayos anteriores quedaron en una generación menor y no
+  // se muestran. A quien se sacó a mano SÍ se ve: es de esta generación, solo
+  // que inactivo, y hay que poder devolverlo al mercado.
+  const deEstaPartida = deLaGeneracion(participants, session?.generacion)
+  const enMercado = activos(deEstaPartida)
   const texto = filtro.trim().toLowerCase()
-  const listados = [...participants]
+  const listados = [...deEstaPartida]
     .filter(
       (p) =>
         texto === '' ||
@@ -356,7 +360,9 @@ export default function Host() {
         <p className="host-estado">
           Mercado <strong>{estado}</strong> ·{' '}
           <strong>{enMercado.length}</strong> en bolsa
-          {participants.length !== enMercado.length && <> ({participants.length - enMercado.length} fuera)</>}
+          {deEstaPartida.length !== enMercado.length && (
+            <> ({deEstaPartida.length - enMercado.length} fuera)</>
+          )}
         </p>
 
         <div className="host-grupo">
@@ -524,7 +530,7 @@ export default function Host() {
 
       <div className="host-cols">
         <section className="card">
-          <h2>Participantes ({participants.length})</h2>
+          <h2>Participantes ({deEstaPartida.length})</h2>
           <input
             className="buscador"
             value={filtro}
@@ -593,7 +599,7 @@ export default function Host() {
 
       <ReiniciarPartida
         ocupado={ocupado}
-        cuantos={participants.length}
+        cuantos={deEstaPartida.length}
         onReiniciar={() => ejecutar(() => reiniciarPartida())}
       />
 
