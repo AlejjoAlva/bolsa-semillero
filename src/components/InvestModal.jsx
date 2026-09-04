@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { armarQuiz, esCorrecta } from '../lib/quiz'
-import { CASTIGO_APUESTA, ErrorAmable, fallarInversion, invertir } from '../lib/acciones'
+import {
+  CASTIGO_APUESTA,
+  ErrorAmable,
+  fallarInversion,
+  invertir,
+  registrarFallo,
+} from '../lib/acciones'
 import { etiquetaArea } from '../lib/data'
 
 /**
@@ -22,6 +28,8 @@ export default function InvestModal({ yo, target, participants, onCerrar }) {
 
     if (!esCorrecta(quiz, seleccion)) {
       const perdidos = await fallarInversion(yo.ticker, apuesta)
+      // Que la pérdida se vea en el tablero, igual que se ven las ganancias.
+      registrarFallo(yo.ticker, perdidos)
       setResultado({
         ok: false,
         mensaje:

@@ -1,4 +1,13 @@
 import { QRCodeSVG } from 'qrcode.react'
+import {
+  BONO_CRUCE,
+  BONO_RACHA,
+  CASTIGO_APUESTA,
+  CASTIGO_CORRECCION,
+  PUNTOS_BASE,
+  RACHA_CADA,
+  UMBRAL_SOBRECOMPRA,
+} from '../lib/puntaje'
 import Leaderboard from '../components/Leaderboard'
 import LogFeed from '../components/LogFeed'
 import { msHasta, rondaDe, rumorDe, useLogs, useParticipants, useSession } from '../lib/data'
@@ -6,6 +15,9 @@ import { activos } from '../lib/participantes'
 import Cinta from '../components/Cinta'
 import RumorBanner from '../components/RumorBanner'
 import ResumenMercado from '../components/ResumenMercado'
+import FraseMercado from '../components/FraseMercado'
+import Podio from '../components/Podio'
+import Firma from '../components/Firma'
 import { resolverRumor } from '../lib/acciones'
 import { useEffect, useRef, useState } from 'react'
 import { useTransicionA } from '../lib/animacion'
@@ -53,8 +65,9 @@ export default function Display() {
     }, 8000)
     return () => clearTimeout(id)
   }, [rumor, ahora])
-  const lider = [...participants].sort((a, b) => (b.points ?? 0) - (a.points ?? 0))[0]
+
   const abriendo = useTransicionA(session?.game_status, 'activo')
+  const cerrada = Boolean(session?.completada_por || session?.cerrada_por_host)
 
   return (
     <div className="display">
@@ -63,63 +76,76 @@ export default function Display() {
           <div className="campana-banda">Mercado abierto</div>
         </div>
       )}
+
       <header className="display-header">
-        <h1>Bolsa del Semillero</h1>
+        <div className="display-marca">
+          <h1>La Bolsa</h1>
+          <span className="display-subtitulo">Aquí cada persona cotiza · UACE</span>
+        </div>
         <span className={`estado ${estado.clase}`}>{estado.texto}</span>
         <span className="conteo">{participants.length} acciones en bolsa</span>
+        <img className="display-logo" src="/uace-logo.png" alt="Unidad de Análisis en Ciencias Económicas" />
       </header>
 
-      {(session?.completada_por || session?.cerrada_por_host) && (
-        <section className="cierre-ronda">
-          <p className="cierre-eyebrow">Mercado cerrado</p>
-          <p className="cierre-texto">
-            {session.completada_por ? (
-              <>
-                <strong>${session.completada_por}</strong> invirtió en todo el mercado
-              </>
-            ) : (
-              <>Se acabó la sesión de negociación</>
-            )}
-          </p>
-          {lider && (
-            <p className="cierre-lider">
-              Va primero <strong>${lider.ticker}</strong> · {lider.name} · {lider.points ?? 0} pts
-            </p>
-          )}
-        </section>
+      <FraseMercado estado={session?.game_status ?? 'esperando'} />
+
+      {rumor && !cerrada && (
+        <RumorBanner rumor={rumor} restante={msHasta(rumor.expira_at, ahora)} />
       )}
 
-      <RumorBanner rumor={rumor} restante={rumor ? msHasta(rumor.expira_at, ahora) : 0} />
+      {cerrada ? (
+        <Podio participants={participants} session={session} />
+      ) : (
+        <>
+          <ResumenMercado participants={participants} />
 
-      <ResumenMercado participants={participants} ronda={rondaDe(session)} />
+          <div className="display-cuerpo">
+            <section className="zona zona-rank-a">
+              <Leaderboard
+                titulo="Mejor Portafolio"
+                descripcion="Puntos ganados invirtiendo"
+                participants={participants}
+                campo="points"
+                sufijo="pts"
+                max={7}
+              />
+            </section>
+
+            <section className="zona zona-rank-b">
+              <Leaderboard
+                titulo="Acción Más Valiosa"
+                descripcion="Cuánta gente ha invertido en ti"
+                participants={participants}
+                campo="received_count"
+                sufijo="inv."
+                max={7}
+              />
+            </section>
+
+            <aside className="zona zona-qr">
+              <section className="qr">
+                <h3>Regístrate</h3>
+                <QRCodeSVG value={urlRegistro} size={128} includeMargin />
+                <p className="url">{urlRegistro}</p>
+              </section>
+              <ul className="reglas-rapidas">
+                <li><b>+{PUNTOS_BASE}</b> por inversión acertada</li>
+                <li><b>+{BONO_CRUCE}</b> si es nuevo ↔ antiguo</li>
+                <li><b>+{BONO_RACHA}</b> cada {RACHA_CADA} aciertos seguidos</li>
+                <li><b>−{CASTIGO_CORRECCION}</b> a los inversores de una acción al llegar a {UMBRAL_SOBRECOMPRA}</li>
+                <li><b>−{CASTIGO_APUESTA}</b> si apuestas y fallas</li>
+              </ul>
+            </aside>
+
+            <section className="zona zona-log">
+              <LogFeed logs={logs} />
+            </section>
+          </div>
+        </>
+      )}
 
       <Cinta participants={participants} />
-
-      <div className="display-tablas">
-        <Leaderboard
-          titulo="Mejor Portafolio"
-          descripcion="Puntos ganados invirtiendo"
-          participants={participants}
-          campo="points"
-          sufijo="pts"
-        />
-        <Leaderboard
-          titulo="Acción Más Valiosa"
-          descripcion="Cuánta gente ha invertido en ti"
-          participants={participants}
-          campo="received_count"
-          sufijo="inv."
-        />
-      </div>
-
-      <div className="display-pie">
-        <LogFeed logs={logs} />
-        <section className="qr">
-          <h3>Regístrate</h3>
-          <QRCodeSVG value={urlRegistro} size={160} includeMargin />
-          <p className="url">{urlRegistro}</p>
-        </section>
-      </div>
+      <Firma />
     </div>
   )
 }

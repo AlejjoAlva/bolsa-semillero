@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import LogFeed from '../components/LogFeed'
+import Firma from '../components/Firma'
 import Leaderboard from '../components/Leaderboard'
 import {
   ErrorAmable,
@@ -11,6 +12,7 @@ import {
   finalizarPartida,
   lanzarRumor,
   lanzarRumorPorHito,
+  empezarDeCero,
   reiniciarPartida,
   resolverRumor,
   sacarDelMercado,
@@ -43,6 +45,7 @@ import { activos, esActivo } from '../lib/participantes'
 const PASSWORD = import.meta.env.VITE_HOST_PASSWORD
 const CLAVE_SESION = 'bolsa_host_ok'
 const CONFIRMACION = 'REINICIAR'
+const CONFIRMACION_CERO = 'EMPEZAR DE CERO'
 
 function Login({ onEntrar }) {
   const [valor, setValor] = useState('')
@@ -59,6 +62,7 @@ function Login({ onEntrar }) {
             a correr <code>npm run build</code> antes de desplegar.
           </p>
         </div>
+        <Firma />
       </main>
     )
   }
@@ -86,6 +90,7 @@ function Login({ onEntrar }) {
           Entrar
         </button>
       </form>
+      <Firma />
     </main>
   )
 }
@@ -94,7 +99,12 @@ function Login({ onEntrar }) {
  * Reinicio de partida: vive al pie, discreto, y pide escribir la palabra
  * completa. Un "¿seguro?" se acepta sin leer; esto no.
  */
-function ReiniciarPartida({ ocupado, ronda, cuantos, onReiniciar }) {
+/**
+ * Empezar de cero: retira a todo el mundo y obliga a registrarse de nuevo.
+ * Más drástico que reiniciar la partida, así que pide una confirmación más
+ * larga y avisa de lo único que no puede hacer: borrar de verdad la base.
+ */
+function EmpezarDeCero({ ocupado, cuantos, onEmpezar }) {
   const [abierto, setAbierto] = useState(false)
   const [texto, setTexto] = useState('')
 
@@ -102,8 +112,66 @@ function ReiniciarPartida({ ocupado, ronda, cuantos, onReiniciar }) {
     return (
       <div className="zona-riesgo">
         <p className="ayuda">
-          Reiniciar deja a las {cuantos} personas registradas en cero puntos y abre la ronda{' '}
-          {ronda + 1}. Nadie pierde su ticker.
+          Empezar de cero saca del mercado a las {cuantos} personas registradas y deja la partida
+          en blanco: cada celular vuelve solo a la pantalla de registro y hay que inscribirse de
+          nuevo, con tickers nuevos. Úsalo entre ensayos.
+        </p>
+        <p className="ayuda">
+          Los documentos antiguos siguen en la base, invisibles para la app. Borrarlos de verdad
+          solo se puede desde la terminal (ver README §4.5).
+        </p>
+        <button className="boton compacto peligro" disabled={ocupado} onClick={() => setAbierto(true)}>
+          Empezar de cero
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="confirmacion">
+      <label className="campo">
+        <span>
+          Escribe <code>{CONFIRMACION_CERO}</code> para retirar a todo el mundo
+        </span>
+        <input value={texto} onChange={(e) => setTexto(e.target.value)} autoComplete="off" autoFocus />
+      </label>
+      <div className="botonera">
+        <button
+          className="boton compacto peligro"
+          disabled={ocupado || texto.trim().toUpperCase() !== CONFIRMACION_CERO}
+          onClick={async () => {
+            await onEmpezar()
+            setAbierto(false)
+            setTexto('')
+          }}
+        >
+          Sí, empezar de cero
+        </button>
+        <button
+          className="boton compacto"
+          disabled={ocupado}
+          onClick={() => {
+            setAbierto(false)
+            setTexto('')
+          }}
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ReiniciarPartida({ ocupado, cuantos, onReiniciar }) {
+  const [abierto, setAbierto] = useState(false)
+  const [texto, setTexto] = useState('')
+
+  if (!abierto) {
+    return (
+      <div className="zona-riesgo">
+        <p className="ayuda">
+          Reiniciar deja a las {cuantos} personas registradas en cero puntos y vuelve a abrir el
+          mercado desde el principio. Nadie pierde su ticker ni tiene que registrarse de nuevo.
         </p>
         <button className="boton compacto peligro" disabled={ocupado} onClick={() => setAbierto(true)}>
           Reiniciar partida
@@ -271,7 +339,6 @@ export default function Host() {
   }
 
   const estado = session?.game_status ?? 'esperando'
-  const ronda = rondaDe(session) ?? 1
   const enMercado = activos(participants)
   const texto = filtro.trim().toLowerCase()
   const listados = [...participants]
@@ -287,7 +354,7 @@ export default function Host() {
     <main className="pantalla ancha">
       <div className="host-barra">
         <p className="host-estado">
-          Mercado <strong>{estado}</strong> · ronda <strong>{ronda}</strong> ·{' '}
+          Mercado <strong>{estado}</strong> ·{' '}
           <strong>{enMercado.length}</strong> en bolsa
           {participants.length !== enMercado.length && <> ({participants.length - enMercado.length} fuera)</>}
         </p>
@@ -379,8 +446,8 @@ export default function Host() {
           🏁{' '}
           {session.completada_por ? (
             <>
-              <strong>${session.completada_por}</strong> invirtió en todo el mercado y la ronda se
-              cerró sola.
+              <strong>${session.completada_por}</strong> invirtió en todo el mercado y el
+              mercado se cerró solo.
             </>
           ) : (
             <>Cerraste el mercado.</>
@@ -402,7 +469,7 @@ export default function Host() {
                 : madurez.hito > lanzados
                   ? `Esperando exposición: hacen falta ${madurez.umbral} personas en un mismo sector`
                   : siguienteHito === null
-                    ? 'Ya salieron todos los rumores de la ronda'
+                    ? 'Ya salieron todos los rumores'
                     : `Siguiente rumor al ${Math.round(siguienteHito * 100)}% del mercado`}
         </span>
 
@@ -519,17 +586,23 @@ export default function Host() {
             </div>
           </section>
           <section className="card">
-            <LogFeed logs={logs} titulo={`Log · ronda ${ronda} (últimas ${logs.length})`} />
+            <LogFeed logs={logs} titulo={`Actividad del mercado (últimas ${logs.length})`} />
           </section>
         </div>
       </div>
 
       <ReiniciarPartida
         ocupado={ocupado}
-        ronda={ronda}
         cuantos={participants.length}
         onReiniciar={() => ejecutar(() => reiniciarPartida())}
       />
+
+      <EmpezarDeCero
+        ocupado={ocupado}
+        cuantos={participants.length}
+        onEmpezar={() => ejecutar(() => empezarDeCero())}
+      />
+      <Firma />
     </main>
   )
 }

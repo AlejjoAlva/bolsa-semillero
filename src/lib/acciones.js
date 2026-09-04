@@ -19,6 +19,7 @@ import { generarTicker, idInversion } from './ticker'
 import {
   CASTIGO_CORRECCION,
   CIERRE_PUNTOS,
+  COMISION_LIQUIDAR,
   RUMOR_MINUTOS,
   ajusteDeCierre,
   calcularPuntos,
@@ -107,9 +108,23 @@ export async function registrarParticipante({ nombre, area, seniority, respuesta
     })
 
     if (libre) {
+      // Llegados aquí la persona YA está inscrita: el documento se creó dentro
+      // de la transacción. Lo que sigue es accesorio y NO puede tumbar el
+      // registro.
+      //
       // El contador de activos vive en la sesión para que comprobar el fin de
-      // la ronda no cueste una lectura de toda la colección en cada inversión.
-      await setDoc(sessionRef(), { activos_count: increment(1) }, { merge: true })
+      // la ronda no cueste una lectura de toda la colección en cada inversión,
+      // pero es un único documento: cuando 35 personas escanean el QR a la vez
+      // todas escriben sobre él, y Firestore sostiene del orden de una
+      // escritura por segundo por documento. Si esa escritura falla y dejamos
+      // que la excepción suba, la persona ve un error, reintenta, y acaba
+      // inscrita dos veces con dos tickers. El contador se recalcula solo con
+      // `sincronizarActivos()`, que el panel llama al abrirse.
+      try {
+        await setDoc(sessionRef(), { activos_count: increment(1) }, { merge: true })
+      } catch (err) {
+        console.error('activos_count tras el registro (se recalcula al abrir el panel)', err)
+      }
       await escribirLog('registro', `$${ticker} se unió 🎉`)
       return ticker
     }
@@ -247,13 +262,14 @@ export async function aplicarCorreccion(targetTicker, ronda) {
     inversores.map((t) => getDoc(doc(db, 'participants', t))),
   )
   const lote = writeBatch(db)
-  let afectados = 0
+  const tocados = []
   for (const d of docs) {
     if (!d.exists()) continue
     const puntos = d.data().points ?? 0
     lote.update(d.ref, { points: Math.max(0, puntos - CASTIGO_CORRECCION) })
-    afectados++
+    tocados.push(d.id)
   }
+  const afectados = tocados.length
 
   // Misma guardia que en el rumor: si reiniciaron la partida mientras
   // calculábamos, el castigo ya no corresponde a esta ronda.
@@ -267,7 +283,9 @@ export async function aplicarCorreccion(targetTicker, ronda) {
 
   await escribirLog(
     'correccion',
-    `📉 $${targetTicker} se sobrecalentó: ${afectados} inversores pierden ${CASTIGO_CORRECCION} punto`,
+    `📉 $${targetTicker} se sobrecalentó (${afectados} inversiones): ${tocados
+      .map((t) => '$' + t)
+      .join(' ')} −${CASTIGO_CORRECCION} pt`,
     ronda,
   )
   return { ticker: targetTicker, afectados }
@@ -295,6 +313,16 @@ export async function fallarInversion(investorTicker, apuesta = false) {
     console.error('fallarInversion', err)
     return 0
   }
+}
+
+/**
+ * Deja constancia en el log de una venta en corto fallida. Solo se registra
+ * cuando de verdad se perdieron puntos: fallar sin apostar no cuesta nada y
+ * llenaría el tablero de ruido tapando lo que sí importa.
+ */
+export async function registrarFallo(investorTicker, perdidos) {
+  if (!perdidos) return
+  await escribirLog('correccion', `📉 $${investorTicker} apostó y falló: −${perdidos} pts`)
 }
 
 // --- Controles del host -----------------------------------------------------
@@ -418,6 +446,78 @@ export async function reiniciarPartida() {
  * desinflan y las que nadie buscó se revalorizan. Se aplica una sola vez por
  * ronda; devuelve a quiénes tocó.
  */
+/**
+ * Empezar de cero: retira a TODO el mundo del mercado y obliga a registrarse de
+ * nuevo. Pensado para dejar la app limpia entre ensayos.
+ *
+ * No borra documentos, porque las reglas no permiten borrar desde el cliente
+ * (ver README §5): abrir ese permiso dejaría que cualquiera vaciara el juego
+ * desde la consola del navegador a mitad del evento, ya que la contraseña de
+ * /host es solo de interfaz. En su lugar todos quedan `activo: false` y en
+ * ceros, con lo que desaparecen de listas, quizzes y rankings; y la sesión sube
+ * un contador de `generacion` que hace que cada celular olvide su ticker y
+ * vuelva a la pantalla de registro.
+ *
+ * Para un borrado físico de la base están los comandos `firebase
+ * firestore:delete` del README, que corren fuera de la app.
+ *
+ * Devuelve { retirados, ronda, generacion }.
+ */
+export async function empezarDeCero() {
+  const [participantesSnap, sessionSnap] = await Promise.all([
+    getDocs(collection(db, 'participants')),
+    getDoc(sessionRef()),
+  ])
+  const previa = sessionSnap.exists() ? sessionSnap.data() : {}
+  const nuevaRonda = (previa.ronda ?? 1) + 1
+  const nuevaGeneracion = (previa.generacion ?? 0) + 1
+
+  // Un lote admite 500 escrituras. Se trocea por si algún día hay más gente.
+  const docs = participantesSnap.docs
+  for (let i = 0; i < docs.length; i += 400) {
+    const lote = writeBatch(db)
+    for (const d of docs.slice(i, i + 400)) {
+      lote.update(d.ref, {
+        activo: false,
+        points: 0,
+        received_count: 0,
+        streak: 0,
+        inversiones_hechas: 0,
+        correccion_ronda: null,
+        postura_rumor: null,
+        postura_rumor_id: null,
+      })
+    }
+    await lote.commit()
+  }
+
+  await setDoc(
+    sessionRef(),
+    {
+      game_status: 'esperando',
+      ronda: nuevaRonda,
+      generacion: nuevaGeneracion,
+      activos_count: 0,
+      completada_por: null,
+      completada_en: null,
+      cerrada_por_host: null,
+      rumor: null,
+      rumores_lanzados: 0,
+      hito_cancelado: null,
+      rumor_auto_ronda: null,
+      cierre_ronda: null,
+    },
+    { merge: true },
+  )
+
+  await escribirLog(
+    'reinicio',
+    `🧹 Todo a cero: ${docs.length} registros retirados. Hay que volver a registrarse.`,
+    nuevaRonda,
+  )
+  return { retirados: docs.length, ronda: nuevaRonda, generacion: nuevaGeneracion }
+}
+
 export async function cierreVolatil() {
   const [participantesSnap, sessionSnap] = await Promise.all([
     getDocs(collection(db, 'participants')),
@@ -443,9 +543,9 @@ export async function cierreVolatil() {
 
   await escribirLog(
     'ajuste',
-    `⚖️ Cierre volátil: bajan ${bajan.map((p) => '$' + p.ticker).join(', ')} · suben ${suben
+    `⚖️ Cierre volátil · −${CIERRE_PUNTOS} pts: ${bajan
       .map((p) => '$' + p.ticker)
-      .join(', ')}`,
+      .join(' ')} · +${CIERRE_PUNTOS} pts: ${suben.map((p) => '$' + p.ticker).join(' ')}`,
     ronda,
   )
   return { bajan: bajan.map((p) => p.ticker), suben: suben.map((p) => p.ticker) }
@@ -475,7 +575,9 @@ export async function lanzarRumor(area, minutos = RUMOR_MINUTOS) {
     { rumor, rumores_lanzados: increment(1), hito_cancelado: null },
     { merge: true },
   )
-  await escribirLog('rumor', `📰 Se rumorea que ${area} se va a desplomar — ${minutos} minutos`, ronda)
+  const cuantoDura =
+    minutos < 1 || minutos % 1 !== 0 ? `${Math.round(minutos * 60)} segundos` : `${minutos} minutos`
+  await escribirLog('rumor', `📰 Se rumorea que ${area} se va a desplomar — ${cuantoDura}`, ronda)
   return rumor
 }
 
@@ -552,8 +654,8 @@ export async function resolverRumor() {
   await escribirLog(
     'rumor',
     cierto
-      ? `📉 El rumor era CIERTO: ${rumor.area} se desploma. ${perdedores} pierden, ${ganadores} se salvaron.`
-      : `📈 El rumor era FALSO: ${rumor.area} aguanta. ${ganadores} ganan, ${perdedores} pagan comisión.`,
+      ? `📉 El rumor era CIERTO: ${rumor.area} se desploma. ${perdedores} pierden 1 pt por cada acción del sector que mantuvieron; ${ganadores} liquidaron a tiempo y no pierden nada.`
+      : `📈 El rumor era FALSO: ${rumor.area} aguanta. ${ganadores} ganan 1 pt por cada acción del sector que mantuvieron; ${perdedores} liquidaron y pagan ${COMISION_LIQUIDAR} pt de comisión.`,
     ronda,
   )
 

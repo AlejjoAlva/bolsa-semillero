@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import RegisterForm from '../components/RegisterForm'
 import Instrucciones from '../components/Instrucciones'
+import Firma from '../components/Firma'
 import InvestModal from '../components/InvestModal'
 import {
   claseArea,
@@ -9,10 +10,10 @@ import {
   rondaDe,
   rumorDe,
   siglaArea,
-  useParticipants,
+  useRoster,
   useSession,
 } from '../lib/data'
-import { activos } from '../lib/participantes'
+import { activos, debeOlvidarRegistro, esActivo } from '../lib/participantes'
 import { useContador } from '../lib/animacion'
 import { fijarPostura } from '../lib/acciones'
 import RumorCard from '../components/RumorCard'
@@ -20,6 +21,9 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 
 const CLAVE_LOCAL = 'bolsa_ticker'
+// Qué "generación" de la partida vio este celular. Si el anfitrión empieza de
+// cero, la de la sesión cambia y este celular olvida su registro.
+const CLAVE_GENERACION = 'bolsa_generacion'
 
 /**
  * Inversiones que ya hizo esta persona en la ronda actual, para no ofrecer
@@ -74,9 +78,12 @@ function TituloConAcceso() {
   }
 
   return (
-    <h1 className="titulo-app" onClick={tocar}>
-      Bolsa del Semillero
-    </h1>
+    <header className="cabecera-app">
+      <h1 className="titulo-app" onClick={tocar}>
+        La Bolsa
+      </h1>
+      <img className="logo-app" src="/uace-logo.png" alt="Unidad de Análisis en Ciencias Económicas" />
+    </header>
   )
 }
 
@@ -106,8 +113,11 @@ function Metricas({ yo }) {
 
 export default function Participant() {
   const session = useSession()
-  const { participants, cargado } = useParticipants()
+  // El ticker se declara antes que el roster porque el roster escucha en vivo
+  // el documento propio y necesita saber cuál es.
   const [ticker, setTicker] = useState(() => localStorage.getItem(CLAVE_LOCAL) ?? null)
+  const { participants, cargado, recargar } = useRoster(ticker, session?.activos_count)
+  const [actualizando, setActualizando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [objetivo, setObjetivo] = useState(null)
 
@@ -120,12 +130,25 @@ export default function Participant() {
   useEffect(() => {
     if (ticker || !cargado) return
     const uid = auth.currentUser?.uid
-    const mio = uid && participants.find((p) => p.uid === uid)
+    // Solo se recupera un registro VIGENTE: tras "empezar de cero" el documento
+    // viejo sigue ahí con este mismo uid anónimo, y sin este filtro el celular
+    // resucitaría un ticker retirado en vez de volver al registro.
+    const mio = uid && participants.find((p) => p.uid === uid && esActivo(p))
     if (mio) {
       localStorage.setItem(CLAVE_LOCAL, mio.ticker)
       setTicker(mio.ticker)
     }
   }, [ticker, cargado, participants])
+
+  // El anfitrión empezó de cero: este celular debe registrarse otra vez.
+  useEffect(() => {
+    const generacion = session?.generacion
+    const vista = Number(localStorage.getItem(CLAVE_GENERACION) ?? 0)
+    if (!debeOlvidarRegistro(generacion, vista)) return
+    localStorage.setItem(CLAVE_GENERACION, String(generacion))
+    localStorage.removeItem(CLAVE_LOCAL)
+    setTicker(null)
+  }, [session?.generacion])
 
   // El ticker guardado ya no existe (p. ej. se limpió la base): volvemos al registro.
   useEffect(() => {
@@ -134,6 +157,17 @@ export default function Participant() {
       setTicker(null)
     }
   }, [ticker, cargado, yo])
+
+  // El celular no escucha la lista en vivo (ver useRoster): se refresca sola
+  // cuando alguien entra o sale, pero este botón deja pedirla a mano.
+  async function actualizarLista() {
+    setActualizando(true)
+    try {
+      await recargar()
+    } finally {
+      setActualizando(false)
+    }
+  }
 
   function alRegistrar(nuevoTicker) {
     localStorage.setItem(CLAVE_LOCAL, nuevoTicker)
@@ -160,6 +194,7 @@ export default function Participant() {
     return (
       <main className="pantalla">
         <p className="ayuda">Conectando con el mercado…</p>
+        <Firma />
       </main>
     )
   }
@@ -170,6 +205,7 @@ export default function Participant() {
         <TituloConAcceso />
         <Instrucciones abiertaAlPrincipio />
         <RegisterForm tickersExistentes={tickersExistentes} onRegistrado={alRegistrar} />
+        <Firma />
       </main>
     )
   }
@@ -184,6 +220,7 @@ export default function Participant() {
             desde su panel y no pierdes nada de lo que llevas.
           </p>
         </section>
+        <Firma />
       </main>
     )
   }
@@ -197,6 +234,7 @@ export default function Participant() {
           participants={participants}
           onCerrar={() => setObjetivo(null)}
         />
+        <Firma />
       </main>
     )
   }
@@ -247,6 +285,19 @@ export default function Participant() {
           <p className="aviso">El mercado abre pronto, mira la pantalla grande.</p>
         )}
 
+        <div className="fila-actualizar">
+          <span className="ayuda">
+            {candidatos.length === 1 ? '1 acción disponible' : `${candidatos.length} acciones disponibles`}
+          </span>
+          <button
+            className="boton compacto fantasma"
+            onClick={actualizarLista}
+            disabled={actualizando}
+          >
+            {actualizando ? 'Actualizando…' : '↻ Actualizar lista'}
+          </button>
+        </div>
+
         <input
           className="buscador"
           value={busqueda}
@@ -286,6 +337,7 @@ export default function Participant() {
           })}
         </ul>
       </section>
+      <Firma />
     </main>
   )
 }

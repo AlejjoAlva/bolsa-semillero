@@ -1,6 +1,7 @@
-# Bolsa del Semillero
+# La Bolsa — UACE
 
-Web app para la actividad de integración: cada persona sale a bolsa como una "acción" y los demás
+"La Bolsa": web app para la actividad de integración de la Unidad de Análisis en Ciencias Económicas.
+Cada persona del salón cotiza como una acción; los demás invierten en ella tras hablarle. cada persona sale a bolsa como una "acción" y los demás
 invierten en ella después de hablarle en persona y acertar un mini-quiz sobre sus respuestas privadas.
 
 Tres rutas, una sola SPA:
@@ -324,6 +325,19 @@ y devolver gente, y reiniciar la partida.
 
 ---
 
+
+### Consumo de lecturas (medido, no estimado)
+
+El celular **no escucha la colección entera**: carga el listado una vez, escucha en vivo solo su
+propio documento y pide el delta (`created_at >=` la última marca) cuando `activos_count` cambia.
+`/display` y `/host` sí escuchan todo en vivo, a propósito: son dos clientes y ahí es donde la
+gente ve la partida en tiempo real.
+
+Auditoría con 35 celulares simultáneos contra el proyecto real (`prueba-carga.mjs`):
+35/35 conexiones anónimas a la vez, 34/34 transacciones concurrentes sin conflicto, y
+**3,06 lecturas por inversión repartidas entre los 35** — proyección de 8-15 % del tope diario
+según cuántas inversiones haya. Antes del cambio la proyección era 67-118 %.
+
 ## 4. Runbook del día
 
 1. **Antes de salir de casa**: `npm run build && firebase deploy`, abre `/host` y confirma que dice
@@ -345,6 +359,37 @@ colecciones `participants`, `investments` y `logs`, y pon `session/main` en `esp
 detecta que el ticker guardado ya no existe y devuelve a la gente al formulario.
 
 ---
+
+## 4.5 Empezar de cero entre ensayos
+
+Dos niveles, según lo que necesites.
+
+**Desde el panel, botón "Empezar de cero"** (al final de `/host`, pide escribir
+`EMPEZAR DE CERO`). Retira del mercado a todos los registrados, los deja en ceros y sube el
+contador de `generacion` de la sesión. Cada celular detecta ese cambio, olvida su ticker y
+**vuelve solo a la pantalla de registro**: la gente se inscribe de nuevo y recibe tickers
+nuevos. Es lo que quieres entre un ensayo y otro.
+
+Lo que ese botón **no** hace es borrar. Los documentos antiguos siguen en Firestore marcados
+`activo: false`, invisibles para la app. No es un descuido: las reglas no permiten borrar desde
+el cliente a propósito, porque la contraseña de `/host` es solo de interfaz y abrir ese permiso
+dejaría que cualquiera vaciara el juego desde la consola del navegador a mitad del evento
+(ver §5).
+
+**Borrado físico, desde la terminal.** Para dejar la base literalmente vacía —lo recomendable
+justo antes del evento real, para que la carga inicial de cada celular sea la mínima:
+
+```bash
+firebase firestore:delete participants --recursive -f
+firebase firestore:delete investments --recursive -f
+firebase firestore:delete logs --recursive -f
+firebase firestore:delete session --recursive -f
+```
+
+Después abre `/host` una vez: la sesión se recrea sola en estado *esperando*.
+
+> Estos comandos los tienes que correr tú. Una sesión de Claude Code los tiene bloqueados por
+> ser borrados destructivos.
 
 ## 5. Límites conocidos de esta versión
 

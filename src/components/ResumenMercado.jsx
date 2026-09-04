@@ -6,7 +6,7 @@ import { nombreCortoArea } from '../lib/data'
  * Todo sale de los datos que la pantalla ya tiene en memoria — no cuesta ni una
  * lectura extra a Firestore.
  */
-export default function ResumenMercado({ participants, ronda }) {
+export default function ResumenMercado({ participants }) {
   const inversiones = participants.reduce((t, p) => t + (p.inversiones_hechas ?? 0), 0)
   const lider = [...participants].sort((a, b) => (b.points ?? 0) - (a.points ?? 0))[0]
   const masBuscada = [...participants].sort(
@@ -25,7 +25,6 @@ export default function ResumenMercado({ participants, ronda }) {
     <div className="resumen">
       {tile('Acciones listadas', participants.length)}
       {tile('Operaciones', inversiones)}
-      {tile('Sesión', `#${ronda ?? 1}`)}
       {lider && tile('Mayor portafolio', `$${lider.ticker}`, `${lider.points ?? 0} pts`)}
       {masBuscada &&
         tile('Más demandada', `$${masBuscada.ticker}`, nombreCortoArea(masBuscada.area))}

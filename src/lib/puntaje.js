@@ -16,8 +16,8 @@ export const CASTIGO_APUESTA = 2
 export const CIERRE_CUANTAS = 3
 export const CIERRE_PUNTOS = 2
 
-/** Duración de un rumor de sector, en minutos. */
-export const RUMOR_MINUTOS = 3
+/** Duración de un rumor de sector, en minutos (1,5 = minuto y medio). */
+export const RUMOR_MINUTOS = 1.5
 /** Lo que cuesta liquidar cuando el rumor resulta falso. */
 export const COMISION_LIQUIDAR = 1
 /** Mínimo de gente expuesta para que un rumor sobre un sector valga la pena. */

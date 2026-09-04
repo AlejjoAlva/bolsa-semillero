@@ -23,7 +23,9 @@ import {
 } from '../src/lib/puntaje.js'
 import { generarTicker, prefijoDe, idInversion } from '../src/lib/ticker.js'
 import { armarQuiz, esCorrecta } from '../src/lib/quiz.js'
-import { activos, esActivo } from '../src/lib/participantes.js'
+import {
+  activos, debeOlvidarRegistro, esActivo, fusionarRoster, marcaMasReciente,
+} from '../src/lib/participantes.js'
 import { AREAS, etiquetaArea, nombreCortoArea, siglaArea } from '../src/lib/areas.js'
 
 // --- Puntaje ---------------------------------------------------------------
@@ -392,4 +394,100 @@ test('un área desconocida no rompe la interfaz', () => {
   assert.equal(etiquetaArea('inventada'), 'inventada')
   assert.equal(nombreCortoArea('inventada'), 'inventada')
   assert.equal(siglaArea('inventada'), '???')
+})
+
+// --- Roster del celular ----------------------------------------------------
+// El celular ya no escucha toda la colección: carga el listado una vez y luego
+// pide solo lo que se creó después. Estas dos funciones son toda la lógica de
+// esa mezcla, y por eso se prueban aquí sin Firestore de por medio.
+
+const ts = (ms) => ({ toMillis: () => ms })
+
+test('fusionarRoster: sin listado previo devuelve a los entrantes', () => {
+  const nuevos = [{ ticker: 'ANA10' }, { ticker: 'BET60' }]
+  assert.deepEqual(fusionarRoster([], nuevos).map((p) => p.ticker), ['ANA10', 'BET60'])
+})
+
+test('fusionarRoster: no duplica a quien ya estaba', () => {
+  const actual = [{ ticker: 'ANA10', points: 0 }]
+  const fusion = fusionarRoster(actual, [{ ticker: 'ANA10', points: 4 }])
+  assert.equal(fusion.length, 1)
+})
+
+test('fusionarRoster: el entrante gana sobre la copia vieja', () => {
+  const fusion = fusionarRoster([{ ticker: 'ANA10', name: 'Ana', activo: true }],
+                                [{ ticker: 'ANA10', name: 'Ana', activo: false }])
+  assert.equal(fusion[0].activo, false)
+})
+
+test('fusionarRoster: conserva a los que no vuelven a llegar', () => {
+  const fusion = fusionarRoster([{ ticker: 'ANA10' }, { ticker: 'BET60' }], [{ ticker: 'CAR07' }])
+  assert.deepEqual(fusion.map((p) => p.ticker).sort(), ['ANA10', 'BET60', 'CAR07'])
+})
+
+test('fusionarRoster: ordena por ticker para que la lista no salte', () => {
+  const fusion = fusionarRoster([{ ticker: 'ZOE99' }, { ticker: 'ANA10' }], [{ ticker: 'MIG21' }])
+  assert.deepEqual(fusion.map((p) => p.ticker), ['ANA10', 'MIG21', 'ZOE99'])
+})
+
+test('fusionarRoster: descarta entrantes sin ticker en vez de romper la lista', () => {
+  const fusion = fusionarRoster([{ ticker: 'ANA10' }], [{ name: 'sin ticker' }, { ticker: 'BET60' }])
+  assert.deepEqual(fusion.map((p) => p.ticker), ['ANA10', 'BET60'])
+})
+
+test('marcaMasReciente: listado vacío no tiene marca', () => {
+  assert.equal(marcaMasReciente([]), null)
+})
+
+test('marcaMasReciente: devuelve el created_at más alto', () => {
+  const viejo = ts(1000)
+  const nuevo = ts(5000)
+  assert.equal(marcaMasReciente([{ created_at: viejo }, { created_at: nuevo }]), nuevo)
+})
+
+test('marcaMasReciente: ignora a quien no tiene created_at', () => {
+  const marca = ts(1000)
+  assert.equal(marcaMasReciente([{ ticker: 'ANA10' }, { created_at: marca }]), marca)
+})
+
+test('marcaMasReciente: sin ningún created_at devuelve null', () => {
+  assert.equal(marcaMasReciente([{ ticker: 'ANA10' }, { ticker: 'BET60' }]), null)
+})
+
+test('marcaMasReciente: entiende Date además de Timestamp de Firestore', () => {
+  const fecha = new Date(9000)
+  assert.equal(marcaMasReciente([{ created_at: ts(1000) }, { created_at: fecha }]), fecha)
+})
+
+// --- Empezar de cero -------------------------------------------------------
+// El anfitrión puede retirar a todo el mundo y obligar a registrarse de nuevo.
+// La señal es un contador de "generación" en la sesión: cada celular recuerda
+// cuál vio, y si no coincide con la de ahora, olvida su ticker.
+
+test('debeOlvidarRegistro: sin reinicios, nadie olvida nada', () => {
+  assert.equal(debeOlvidarRegistro(0, 0), false)
+})
+
+test('debeOlvidarRegistro: el anfitrión reinició y el celular no se ha enterado', () => {
+  assert.equal(debeOlvidarRegistro(1, 0), true)
+})
+
+test('debeOlvidarRegistro: ya se enteró de ese reinicio, no vuelve a olvidar', () => {
+  assert.equal(debeOlvidarRegistro(3, 3), false)
+})
+
+test('debeOlvidarRegistro: la sesión todavía no cargó, no se toca nada', () => {
+  assert.equal(debeOlvidarRegistro(undefined, 2), false)
+  assert.equal(debeOlvidarRegistro(null, 2), false)
+})
+
+test('debeOlvidarRegistro: un celular que nunca vio una generación arranca en cero', () => {
+  assert.equal(debeOlvidarRegistro(0, undefined), false)
+  assert.equal(debeOlvidarRegistro(2, undefined), true)
+})
+
+test('debeOlvidarRegistro: cualquier diferencia obliga a olvidar, incluso hacia atrás', () => {
+  // Si se restaura una base vieja, la generación puede bajar. Sigue siendo
+  // "otra partida", así que el celular se vuelve a registrar igual.
+  assert.equal(debeOlvidarRegistro(1, 5), true)
 })
