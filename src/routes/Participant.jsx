@@ -1,30 +1,107 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import RegisterForm from '../components/RegisterForm'
+import Instrucciones from '../components/Instrucciones'
 import InvestModal from '../components/InvestModal'
-import { bullRunActivo, etiquetaArea, useParticipants, useSession } from '../lib/data'
+import {
+  claseArea,
+  etiquetaArea,
+  rondaDe,
+  rumorDe,
+  siglaArea,
+  useParticipants,
+  useSession,
+} from '../lib/data'
+import { activos } from '../lib/participantes'
+import { useContador } from '../lib/animacion'
+import { fijarPostura } from '../lib/acciones'
+import RumorCard from '../components/RumorCard'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 
 const CLAVE_LOCAL = 'bolsa_ticker'
 
-/** Inversiones que ya hizo esta persona, para no ofrecer objetivos repetidos. */
-function useMisInversiones(ticker) {
+/**
+ * Inversiones que ya hizo esta persona en la ronda actual, para no ofrecer
+ * objetivos repetidos. Las de rondas anteriores se descartan en memoria: son
+ * pocas por persona y así la consulta no necesita un índice compuesto.
+ */
+function useMisInversiones(ticker, ronda) {
   const [hechas, setHechas] = useState(new Set())
 
   useEffect(() => {
-    if (!ticker) {
+    if (!ticker || ronda === undefined) {
       setHechas(new Set())
       return
     }
     const q = query(collection(db, 'investments'), where('investor', '==', ticker))
     return onSnapshot(
       q,
-      (snap) => setHechas(new Set(snap.docs.map((d) => d.data().target))),
+      (snap) =>
+        setHechas(
+          new Set(
+            snap.docs
+              .map((d) => d.data())
+              .filter((d) => (d.ronda ?? 1) === ronda)
+              .map((d) => d.target),
+          ),
+        ),
       (err) => console.error('investments listener', err),
     )
-  }, [ticker])
+  }, [ticker, ronda])
 
   return hechas
+}
+
+/**
+ * El título de la app esconde la entrada al panel de control: cinco toques
+ * seguidos llevan a /host. Así el anfitrión llega desde cualquier celular sin
+ * que la ruta esté a la vista de los participantes (que igual tendrían que
+ * saber la contraseña).
+ */
+function TituloConAcceso() {
+  const navegar = useNavigate()
+  const toques = useRef({ n: 0, ultimo: 0 })
+
+  function tocar() {
+    const ahora = Date.now()
+    toques.current.n = ahora - toques.current.ultimo < 1200 ? toques.current.n + 1 : 1
+    toques.current.ultimo = ahora
+    if (toques.current.n >= 5) {
+      toques.current.n = 0
+      navegar('/host')
+    }
+  }
+
+  return (
+    <h1 className="titulo-app" onClick={tocar}>
+      Bolsa del Semillero
+    </h1>
+  )
+}
+
+/** Las tres cifras del perfil, contando hacia arriba cuando cambian. */
+function Metricas({ yo }) {
+  const puntos = useContador(yo.points ?? 0)
+  const recibidas = useContador(yo.received_count ?? 0)
+  const racha = useContador(yo.streak ?? 0)
+
+  return (
+    <div className="metricas">
+      <div>
+        <strong>{puntos}</strong>
+        <span>puntos</span>
+      </div>
+      <div>
+        <strong>{recibidas}</strong>
+        <span>inversiones recibidas</span>
+      </div>
+      <div>
+        <strong>{racha}</strong>
+        <span>racha</span>
+      </div>
+    </div>
+  )
 }
 
 export default function Participant() {
@@ -34,8 +111,9 @@ export default function Participant() {
   const [busqueda, setBusqueda] = useState('')
   const [objetivo, setObjetivo] = useState(null)
 
+  const ronda = rondaDe(session)
   const yo = useMemo(() => participants.find((p) => p.ticker === ticker) ?? null, [participants, ticker])
-  const misInversiones = useMisInversiones(yo?.ticker)
+  const misInversiones = useMisInversiones(yo?.ticker, ronda)
 
   // Si se borró el localStorage pero este mismo dispositivo ya se registró,
   // lo reconocemos por el uid anónimo.
@@ -67,7 +145,7 @@ export default function Participant() {
   const candidatos = useMemo(() => {
     if (!yo) return []
     const texto = busqueda.trim().toLowerCase()
-    return participants
+    return activos(participants)
       .filter((p) => p.ticker !== yo.ticker)
       .filter(
         (p) =>
@@ -89,8 +167,23 @@ export default function Participant() {
   if (!yo) {
     return (
       <main className="pantalla">
-        <h1 className="titulo-app">Bolsa del Semillero</h1>
+        <TituloConAcceso />
+        <Instrucciones abiertaAlPrincipio />
         <RegisterForm tickersExistentes={tickersExistentes} onRegistrado={alRegistrar} />
+      </main>
+    )
+  }
+
+  if (yo.activo === false) {
+    return (
+      <main className="pantalla">
+        <section className="card perfil">
+          <h1 className="ticker-grande">${yo.ticker}</h1>
+          <p className="aviso">
+            El anfitrión te sacó del mercado. Si crees que es un error, háblale — puede devolverte
+            desde su panel y no pierdes nada de lo que llevas.
+          </p>
+        </section>
       </main>
     )
   }
@@ -109,7 +202,7 @@ export default function Participant() {
   }
 
   const abierto = session?.game_status === 'activo'
-  const bull = bullRunActivo(session)
+  const cerrada = Boolean(session?.completada_por || session?.cerrada_por_host)
 
   return (
     <main className="pantalla">
@@ -118,31 +211,40 @@ export default function Participant() {
         <p className="ayuda">
           {yo.name} · {etiquetaArea(yo.area)} · {yo.seniority}
         </p>
-        <div className="metricas">
-          <div>
-            <strong>{yo.points ?? 0}</strong>
-            <span>puntos</span>
-          </div>
-          <div>
-            <strong>{yo.received_count ?? 0}</strong>
-            <span>inversiones recibidas</span>
-          </div>
-          <div>
-            <strong>{yo.streak ?? 0}</strong>
-            <span>racha</span>
-          </div>
-        </div>
-        {bull && <p className="aviso-bull">🚀 Bull Run activo: puntos dobles</p>}
+        <Metricas yo={yo} />
       </section>
+
+      <Instrucciones />
+
+      <RumorCard
+        rumor={rumorDe(session)}
+        yo={yo}
+        onElegir={(postura) => fijarPostura(yo.ticker, rumorDe(session).id, postura)}
+      />
+
+      {cerrada && (
+        <section className="card cierre-participante">
+          <p className="rumor-eyebrow">Mercado cerrado</p>
+          <p className="rumor-titulo">
+            {session.completada_por === yo.ticker
+              ? 'Invertiste en todo el mercado y cerraste la ronda'
+              : session.completada_por
+                ? `$${session.completada_por} completó el mercado`
+                : 'El anfitrión cerró la sesión'}
+          </p>
+          <p className="ayuda">
+            Terminaste con <strong>{yo.points ?? 0} puntos</strong> y{' '}
+            <strong>{yo.received_count ?? 0}</strong>{' '}
+            {(yo.received_count ?? 0) === 1 ? 'persona invirtió' : 'personas invirtieron'} en ti.
+            Los resultados finales están en la pantalla grande.
+          </p>
+        </section>
+      )}
 
       <section className="card">
         <h2>Invertir</h2>
-        {!abierto && (
-          <p className="aviso">
-            {session?.game_status === 'cerrado'
-              ? 'El mercado cerró. Mira la pantalla grande.'
-              : 'El mercado abre pronto, mira la pantalla grande.'}
-          </p>
+        {!abierto && !cerrada && (
+          <p className="aviso">El mercado abre pronto, mira la pantalla grande.</p>
         )}
 
         <input
@@ -169,7 +271,7 @@ export default function Participant() {
                 <div className="objetivo-info">
                   <strong>${p.ticker}</strong>
                   <span>
-                    {p.name} · {etiquetaArea(p.area)}
+                    {p.name} <span className={claseArea(p.area)}>{siglaArea(p.area)}</span>
                   </span>
                 </div>
                 <button

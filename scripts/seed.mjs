@@ -1,16 +1,25 @@
 /**
- * Siembra participantes falsos en el EMULADOR de Firestore, para probar
- * leaderboards y quizzes sin necesitar 30 personas.
+ * Siembra participantes falsos en el proyecto REAL, para ensayar los rankings y
+ * los quizzes sin necesitar 30 personas en la sala.
  *
- *   npm run seed            # 12 participantes
- *   npm run seed -- 25      # 25 participantes
+ *   npm run seed                  # 12 participantes
+ *   npm run seed -- --n 25        # 25 participantes
+ *   npm run seed -- --limpiar     # saca del mercado a todos los sembrados
  *
- * Requiere el emulador corriendo (npm run emu). Nunca toca producción:
- * apunta solo a 127.0.0.1:8080 y usa el token "owner" del emulador.
+ * Lee la config de .env (node --env-file) y entra con un usuario anónimo, igual
+ * que un celular cualquiera: no usa credenciales de administrador, así que solo
+ * puede hacer lo que las reglas de firestore.rules permiten. Por eso `--limpiar`
+ * no borra, sino que marca `activo: false` — nadie puede borrar desde el cliente.
  */
-const HOST = process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080'
-const PROJECT = process.env.VITE_FB_PROJECT_ID ?? 'demo-bolsa'
-const BASE = `http://${HOST}/v1/projects/${PROJECT}/databases/(default)/documents`
+const API_KEY = process.env.VITE_FB_API_KEY
+const PROJECT = process.env.VITE_FB_PROJECT_ID
+
+if (!API_KEY || !PROJECT) {
+  console.error('Faltan VITE_FB_API_KEY / VITE_FB_PROJECT_ID. ¿Existe el archivo .env? (ver README §1.2)')
+  process.exit(1)
+}
+
+const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`
 
 const NOMBRES = ['Ana', 'Carlos', 'Lucía', 'Miguel', 'Sofía', 'Andrés', 'Valeria', 'Julián',
   'Camila', 'Ricardo', 'Daniela', 'Esteban', 'Paula', 'Óscar', 'Mariana', 'Felipe',
@@ -29,10 +38,11 @@ const ANECDOTAS = ['Me perdí 6 horas en un aeropuerto', 'Toqué batería en una
   'Salí en televisión de fondo', 'Cociné para 80 personas en un grado']
 const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Bucaramanga', 'Cartagena',
   'Pereira', 'Manizales', 'Cúcuta', 'Villavicencio', 'Popayán', 'Neiva']
-const AREAS = ['analitica', 'macro', 'commodities', 'capitales']
+const AREAS = ['macro', 'alternativas', 'analitica', 'capitales']
 
 const str = (v) => ({ stringValue: v })
 const int = (v) => ({ integerValue: String(v) })
+const bool = (v) => ({ booleanValue: v })
 const alAzar = (arr, i) => arr[i % arr.length]
 
 function prefijo(nombre) {
@@ -40,31 +50,73 @@ function prefijo(nombre) {
     .toUpperCase().replace(/[^A-Z]/g, '') + 'XXX').slice(0, 3)
 }
 
-async function escribir(coleccion, id, fields) {
-  const url = `${BASE}/${coleccion}${id ? `?documentId=${id}` : ''}`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
-    body: JSON.stringify({ fields }),
-  })
-  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
+async function entrarAnonimo() {
+  const res = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ returnSecureToken: true }),
+    },
+  )
+  const datos = await res.json()
+  if (!res.ok) {
+    throw new Error(
+      `No se pudo entrar con usuario anónimo: ${datos.error?.message}. ` +
+        'Revisa que Authentication > Anónimo esté habilitado en la consola de Firebase.',
+    )
+  }
+  return { token: datos.idToken, uid: datos.localId }
 }
 
-async function main() {
-  const cantidad = Number(process.argv[2]) || 12
+function pedir(token) {
+  return async (metodo, ruta, cuerpo) => {
+    const res = await fetch(`${BASE}${ruta}`, {
+      method: metodo,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+    })
+    const datos = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(`${res.status} ${datos.error?.message ?? ''}`)
+    return datos
+  }
+}
 
-  const res = await fetch(`http://${HOST}/`).catch(() => null)
-  if (!res) {
-    console.error(`No hay emulador de Firestore en ${HOST}. Corre "npm run emu" primero.`)
-    process.exit(1)
+async function listarParticipantes(api) {
+  const docs = []
+  let pageToken
+  do {
+    const q = `?pageSize=300${pageToken ? `&pageToken=${pageToken}` : ''}`
+    const datos = await api('GET', `/participants${q}`)
+    docs.push(...(datos.documents ?? []))
+    pageToken = datos.nextPageToken
+  } while (pageToken)
+  return docs
+}
+
+async function limpiar(api) {
+  const docs = await listarParticipantes(api)
+  const sembrados = docs.filter((d) => d.fields?.seed?.booleanValue === true)
+
+  if (sembrados.length === 0) {
+    console.log('No hay participantes sembrados que sacar del mercado.')
+    return
   }
 
-  await escribir('session', 'main', {
-    game_status: str('activo'),
-    bull_run_expires_at: { nullValue: null },
-  }).catch(() => {}) // ya existía
+  for (const d of sembrados) {
+    const ticker = d.name.split('/').pop()
+    await api('PATCH', `/participants/${ticker}?updateMask.fieldPaths=activo`, {
+      fields: { activo: bool(false) },
+    })
+    console.log(`  $${ticker} fuera del mercado`)
+  }
+  console.log(`\nListo: ${sembrados.length} sembrados fuera del mercado (siguen registrados, sin borrar).`)
+}
 
-  const usados = new Set()
+async function sembrar(api, uid, cantidad) {
+  const existentes = new Set((await listarParticipantes(api)).map((d) => d.name.split('/').pop()))
+
+  let creados = 0
   for (let i = 0; i < cantidad; i++) {
     const nombre = `${alAzar(NOMBRES, i)} ${alAzar(APELLIDOS, i * 3)}`
     let ticker
@@ -72,36 +124,56 @@ async function main() {
     do {
       ticker = prefijo(nombre) + String((i * 7 + n * 13) % 100).padStart(2, '0')
       n++
-    } while (usados.has(ticker) && n < 100)
-    usados.add(ticker)
+    } while (existentes.has(ticker) && n < 100)
+    if (existentes.has(ticker)) continue
+    existentes.add(ticker)
 
-    await escribir('participants', ticker, {
-      uid: str(`seed-${ticker}`),
-      name: str(nombre),
-      area: str(alAzar(AREAS, i)),
-      seniority: str(i % 2 === 0 ? 'nuevo' : 'antiguo'),
-      private_answers: {
-        mapValue: {
-          fields: {
-            comida: str(alAzar(COMIDAS, i)),
-            superpoder: str(alAzar(PODERES, i * 3)),
-            anecdota: str(alAzar(ANECDOTAS, i * 5)),
-            ciudad: str(alAzar(CIUDADES, i * 7)),
+    await api('PATCH', `/participants/${ticker}`, {
+      fields: {
+        uid: str(uid), // las reglas exigen que coincida con quien escribe
+        name: str(nombre),
+        area: str(alAzar(AREAS, i)),
+        seniority: str(i % 2 === 0 ? 'nuevo' : 'antiguo'),
+        private_answers: {
+          mapValue: {
+            fields: {
+              comida: str(alAzar(COMIDAS, i)),
+              superpoder: str(alAzar(PODERES, i * 3)),
+              anecdota: str(alAzar(ANECDOTAS, i * 5)),
+              ciudad: str(alAzar(CIUDADES, i * 7)),
+            },
           },
         },
+        points: int(0),
+        received_count: int(0),
+        streak: int(0),
+        activo: bool(true),
+        seed: bool(true), // marca para poder sacarlos luego en bloque
+        created_at: { timestampValue: new Date().toISOString() },
       },
-      points: int(0),
-      received_count: int(0),
-      streak: int(0),
-      created_at: { timestampValue: new Date().toISOString() },
     })
+    creados++
     console.log(`  $${ticker}  ${nombre}`)
   }
 
-  console.log(`\nListo: ${cantidad} participantes sembrados en el emulador (${PROJECT}).`)
+  console.log(`\nListo: ${creados} participantes sembrados en ${PROJECT}.`)
+  console.log('Sácalos después con:  npm run seed -- --limpiar')
+}
+
+async function main() {
+  const args = process.argv.slice(2)
+  const { token, uid } = await entrarAnonimo()
+  const api = pedir(token)
+
+  if (args.includes('--limpiar')) return limpiar(api)
+
+  const i = args.indexOf('--n')
+  const cantidad = Number(i >= 0 ? args[i + 1] : args[0]) || 12
+  console.log(`Sembrando ${cantidad} participantes en ${PROJECT}…`)
+  return sembrar(api, uid, cantidad)
 }
 
 main().catch((err) => {
-  console.error(err)
+  console.error(err.message ?? err)
   process.exit(1)
 })

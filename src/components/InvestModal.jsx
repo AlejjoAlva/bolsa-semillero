@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { armarQuiz, esCorrecta } from '../lib/quiz'
-import { ErrorAmable, invertir, romperRacha } from '../lib/acciones'
+import { CASTIGO_APUESTA, ErrorAmable, fallarInversion, invertir } from '../lib/acciones'
 import { etiquetaArea } from '../lib/data'
 
 /**
@@ -12,16 +12,23 @@ export default function InvestModal({ yo, target, participants, onCerrar }) {
   // de él, la pregunta se rebarajaría en medio de la elección.
   const [quiz] = useState(() => armarQuiz(target, participants))
   const [seleccion, setSeleccion] = useState(null)
+  const [apuesta, setApuesta] = useState(false)
   const [enviando, setEnviando] = useState(false)
-  const [resultado, setResultado] = useState(null) // { ok, puntos?, bullRun?, mensaje? }
+  const [resultado, setResultado] = useState(null) // { ok, puntos?, mensaje? }
 
   async function confirmar() {
     if (enviando || seleccion === null || !quiz) return
     setEnviando(true)
 
     if (!esCorrecta(quiz, seleccion)) {
-      await romperRacha(yo.ticker)
-      setResultado({ ok: false, mensaje: 'No es correcto, puedes intentarlo más tarde.' })
+      const perdidos = await fallarInversion(yo.ticker, apuesta)
+      setResultado({
+        ok: false,
+        mensaje:
+          perdidos > 0
+            ? `No es correcto. La apuesta te costó ${perdidos} ${perdidos === 1 ? 'punto' : 'puntos'}. Puedes intentarlo más tarde.`
+            : 'No es correcto, puedes intentarlo más tarde.',
+      })
       setEnviando(false)
       return
     }
@@ -31,6 +38,7 @@ export default function InvestModal({ yo, target, participants, onCerrar }) {
         investorTicker: yo.ticker,
         targetTicker: target.ticker,
         questionType: quiz.categoria,
+        apuesta,
       })
       setResultado({ ok: true, ...r })
     } catch (err) {
@@ -88,6 +96,21 @@ export default function InvestModal({ yo, target, participants, onCerrar }) {
             ))}
           </div>
 
+          <label className={`apuesta ${apuesta ? 'activa' : ''}`}>
+            <input
+              type="checkbox"
+              checked={apuesta}
+              onChange={(e) => setApuesta(e.target.checked)}
+              disabled={enviando}
+            />
+            <span>
+              <strong>Vender en corto</strong>
+              <em>
+                Aciertas: puntos dobles. Fallas: pierdes {CASTIGO_APUESTA}.
+              </em>
+            </span>
+          </label>
+
           <button
             className="boton primario"
             onClick={confirmar}
@@ -103,16 +126,29 @@ export default function InvestModal({ yo, target, participants, onCerrar }) {
 
       {resultado?.ok && (
         <>
-          <p className="exito">
-            ¡Inversión registrada! +{resultado.puntos} puntos
-            {resultado.bullRun ? ' (Bull Run x2)' : ''}
-          </p>
+          <p className="flotante">+{resultado.puntos}</p>
+          <p className="exito">Inversión registrada</p>
           <ul className="ayuda desglose">
             <li>Base: +2</li>
             {resultado.cruce && <li>Cruce nuevo ↔ antiguo: +1</li>}
             {resultado.bonoRacha && <li>Racha de 3: +1</li>}
-            {resultado.bullRun && <li>Bull Run: puntos duplicados</li>}
+            {resultado.apuesta && <li>Venta en corto: puntos duplicados</li>}
           </ul>
+
+          {resultado.correccion && (
+            <p className="aviso">
+              📉 <strong>${resultado.correccion.ticker}</strong> se sobrecalentó por exceso de
+              demanda. Los {resultado.correccion.afectados} que invirtieron en esa acción pierden un
+              punto — tú incluido.
+            </p>
+          )}
+
+          {resultado.rondaCompleta && (
+            <p className="aviso">
+              🏁 Invertiste en todo el mercado: la ronda se cierra. Mira la pantalla grande.
+            </p>
+          )}
+
           <button className="boton primario" onClick={onCerrar}>
             Seguir invirtiendo
           </button>

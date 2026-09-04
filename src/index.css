@@ -1,82 +1,122 @@
-:root {
-  --fondo: #0b1220;
-  --panel: #141d2f;
-  --panel-2: #1b2740;
-  --borde: #26354f;
-  --texto: #e8eef8;
-  --tenue: #93a3bd;
-  --verde: #35d07f;
-  --rojo: #ff6b6b;
-  --ambar: #ffc857;
-  --acento: #4d8dff;
+/* =============================================================================
+   Bolsa del Semillero — dirección visual: panel financiero sobrio.
+   Fondo niebla, tinta azulada, reglas finísimas. El color se gana: el verde y
+   el vino solo aparecen cuando un número se mueve.
 
-  color-scheme: dark;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+   El azul de marca (#04364A) sale de la firma de correo de la UACE. Manda en
+   todo lo que estructura la página —cabeceras, reglas gruesas, la cinta, los
+   botones principales— para que las tres pantallas se lean como del semillero
+   y no como una plantilla cualquiera.
+   ========================================================================== */
+
+:root {
+  --marca: #04364a;          /* azul institucional UACE */
+  --marca-viva: #0a5675;     /* el mismo, un punto más claro, para hover */
+  --marca-tenue: #e6edf1;    /* velo de marca para fondos */
+
+  --papel: #f5f7fa;          /* niebla fría */
+  --papel-alto: #ffffff;     /* tarjetas, blanco puro sobre la niebla */
+  --tinta: #0f2937;          /* texto: el azul de marca oscurecido */
+  --tinta-media: #47606e;
+  --tinta-tenue: #7a8d99;
+  --regla: #e1e8ed;          /* líneas de tabla */
+  --regla-fuerte: #c6d3db;
+  --alza: #17795e;
+  --baja: #b23a48;
+  --destacado: #9a6a12;      /* ámbar apagado, para avisos del anfitrión */
+
+  --texto: 'Source Sans 3', Calibri, 'Segoe UI', system-ui, Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  color-scheme: light;
+  font-family: var(--texto);
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: var(--fondo);
-  color: var(--texto);
+  background: var(--papel);
+  color: var(--tinta);
   -webkit-text-size-adjust: 100%;
+  transition: background-color 600ms ease;
 }
 
 button, input, select { font: inherit; }
 
+/* Las cifras van siempre en monoespaciada tabular: es una bolsa, no un blog. */
+.cifra, .metricas strong, .lista-rank .val, .lista-rank .pos, .lista-rank .tick,
+.lista-log .hora, .ticker-grande, .cuenta {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
 /* --- Layout base (móvil primero) ------------------------------------------ */
 
 .pantalla {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px 40px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 16px;
-  max-width: 560px;
-  margin: 0 auto;
 }
 
-.pantalla.ancha { max-width: 1100px; }
+.pantalla.ancha { max-width: 1180px; }
 
 .titulo-app {
   margin: 8px 0 0;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   text-align: center;
+  color: var(--marca);
+  border-bottom: 3px solid var(--marca);
+  padding-bottom: 10px;
 }
 
 .card {
+  background: var(--papel-alto);
+  border: 1px solid var(--regla);
+  border-radius: 4px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: var(--panel);
-  border: 1px solid var(--borde);
-  border-radius: 12px;
-  padding: 16px;
 }
 
-.card h2 { margin: 0; font-size: 1.15rem; }
-.card h3 { margin: 0; font-size: 1rem; }
+.card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--regla-fuerte);
+  padding-bottom: 8px;
+}
 
-.ayuda { margin: 0; color: var(--tenue); font-size: 0.875rem; line-height: 1.4; }
-.error { margin: 0; color: var(--rojo); font-size: 0.9rem; line-height: 1.4; }
-.exito { margin: 0; color: var(--verde); font-size: 1.05rem; font-weight: 600; }
+.card h3 {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--tinta-tenue);
+  font-family: var(--mono);
+}
+
+.ayuda { margin: 0; color: var(--tinta-media); font-size: 0.9rem; line-height: 1.45; }
+.error { margin: 0; color: var(--baja); font-size: 0.92rem; line-height: 1.45; }
+.exito { margin: 0; color: var(--alza); font-size: 1.1rem; font-weight: 700; }
 
 .aviso {
   margin: 0;
   padding: 10px 12px;
-  background: var(--panel-2);
-  border-left: 3px solid var(--ambar);
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-.aviso-bull {
-  margin: 0;
-  padding: 10px 12px;
-  background: rgba(53, 208, 127, 0.12);
-  border-left: 3px solid var(--verde);
-  border-radius: 6px;
-  font-weight: 600;
+  border-left: 3px solid var(--regla-fuerte);
+  background: rgba(200, 179, 160, 0.16);
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 /* --- Formularios ---------------------------------------------------------- */
@@ -88,29 +128,33 @@ button, input, select { font: inherit; }
   border: 0;
   padding: 0;
   margin: 0;
-  min-width: 0;
 }
 
 .campo > span, .campo > legend {
-  color: var(--tenue);
-  font-size: 0.8rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
+  color: var(--tinta-tenue);
   padding: 0;
 }
 
 .campo input, .campo select, .buscador {
   width: 100%;
-  padding: 12px;
-  background: var(--panel-2);
-  border: 1px solid var(--borde);
-  border-radius: 8px;
-  color: var(--texto);
+  padding: 11px 12px;
+  border: 1px solid var(--regla-fuerte);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--tinta);
+  font-family: var(--texto);
+  font-size: 1rem;
 }
 
 .campo input:focus, .campo select:focus, .buscador:focus {
-  outline: 2px solid var(--acento);
+  outline: 2px solid var(--marca);
   outline-offset: 1px;
+  border-color: var(--marca);
 }
 
 .opciones-fila { display: flex; gap: 8px; }
@@ -121,42 +165,63 @@ button, input, select { font: inherit; }
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 12px;
-  background: var(--panel-2);
-  border: 1px solid var(--borde);
-  border-radius: 8px;
+  padding: 11px 8px;
+  border: 1px solid var(--regla-fuerte);
+  border-radius: 3px;
+  background: #fff;
   cursor: pointer;
+  font-size: 0.95rem;
 }
 
-.pastilla.activa { border-color: var(--acento); background: rgba(77, 141, 255, 0.15); }
-.pastilla input { accent-color: var(--acento); }
+.pastilla.activa { border-color: var(--marca); background: var(--marca-tenue); box-shadow: inset 0 0 0 1px var(--marca); }
+.pastilla input { accent-color: var(--marca); }
 
 /* --- Botones -------------------------------------------------------------- */
 
 .boton {
-  padding: 14px 16px;
-  background: var(--panel-2);
-  color: var(--texto);
-  border: 1px solid var(--borde);
-  border-radius: 8px;
-  font-weight: 600;
+  padding: 11px 16px;
+  border: 1px solid var(--tinta);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--tinta);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
-.boton.primario { background: var(--acento); border-color: var(--acento); color: #06101f; }
-.boton.compacto { padding: 10px 14px; flex-shrink: 0; }
-.boton:disabled { opacity: 0.45; cursor: not-allowed; }
+.boton:not(:disabled):hover { background: var(--marca); border-color: var(--marca); color: #fff; }
+.boton.primario { background: var(--marca); border-color: var(--marca); color: #fff; }
+.boton.primario:not(:disabled):hover { background: var(--marca-viva); border-color: var(--marca-viva); }
+.boton.compacto { padding: 7px 12px; font-size: 0.74rem; flex-shrink: 0; }
+.boton.peligro { border-color: var(--baja); color: var(--baja); }
+.boton.peligro:not(:disabled):hover { background: var(--baja); color: var(--papel); }
+.boton:disabled { opacity: 0.35; cursor: not-allowed; }
+.boton:focus-visible { outline: 2px solid var(--marca); outline-offset: 2px; }
 
-.botonera { display: flex; flex-wrap: wrap; gap: 10px; }
-.botonera .boton { flex: 1 1 180px; }
+.botonera { display: flex; flex-wrap: wrap; gap: 8px; }
+.botonera .boton { flex: 1 1 150px; }
+
+.confirmacion {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--baja);
+  border-radius: 3px;
+  padding: 12px;
+  background: rgba(196, 61, 46, 0.05);
+}
 
 /* --- Perfil del participante ---------------------------------------------- */
 
 .ticker-grande {
   margin: 0;
-  font-size: 2.4rem;
-  letter-spacing: 0.04em;
-  color: var(--verde);
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
 .metricas { display: flex; gap: 8px; }
@@ -165,16 +230,25 @@ button, input, select { font: inherit; }
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
   align-items: center;
+  gap: 2px;
   padding: 10px 6px;
-  background: var(--panel-2);
-  border-radius: 8px;
-  text-align: center;
+  border: 1px solid var(--regla);
+  border-radius: 3px;
+  background: var(--papel);
 }
 
-.metricas strong { font-size: 1.5rem; }
-.metricas span { color: var(--tenue); font-size: 0.72rem; line-height: 1.2; }
+.metricas strong { font-size: 1.5rem; font-weight: 600; }
+
+.metricas span {
+  color: var(--tinta-tenue);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-align: center;
+}
 
 /* --- Lista de objetivos --------------------------------------------------- */
 
@@ -184,9 +258,6 @@ button, input, select { font: inherit; }
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-height: 55vh;
-  overflow-y: auto;
 }
 
 .lista-objetivos li {
@@ -194,152 +265,713 @@ button, input, select { font: inherit; }
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
-  background: var(--panel-2);
-  border-radius: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--regla);
 }
 
-.objetivo-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.objetivo-info span { color: var(--tenue); font-size: 0.8rem; overflow-wrap: anywhere; }
+.lista-objetivos li:last-child { border-bottom: 0; }
+.lista-objetivos li.fuera { opacity: 0.45; }
+
+.objetivo-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.objetivo-info strong { font-family: var(--mono); font-weight: 600; font-size: 0.95rem; }
+.objetivo-info span { color: var(--tinta-tenue); font-size: 0.82rem; overflow-wrap: anywhere; }
 
 /* --- Quiz ----------------------------------------------------------------- */
 
 .fila-encabezado { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.fila-encabezado h2 { color: var(--verde); }
+.fila-encabezado h2 { border: 0; padding: 0; font-family: var(--mono); text-transform: none; font-size: 1.3rem; }
 
-.pregunta { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.35; }
+.pregunta { margin: 0; font-size: 1.2rem; font-weight: 700; line-height: 1.35; }
 
 .opciones { display: flex; flex-direction: column; gap: 8px; }
 
 .opcion {
+  padding: 13px 14px;
+  border: 1px solid var(--regla-fuerte);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--tinta);
+  font-family: var(--texto);
+  font-size: 1rem;
   text-align: left;
-  padding: 14px;
-  background: var(--panel-2);
-  color: var(--texto);
-  border: 2px solid var(--borde);
-  border-radius: 8px;
   cursor: pointer;
-  overflow-wrap: anywhere;
+  transition: border-color 120ms ease, background-color 120ms ease;
 }
 
-.opcion.activa { border-color: var(--acento); background: rgba(77, 141, 255, 0.15); }
-.opcion:disabled { opacity: 0.6; cursor: not-allowed; }
+.opcion.activa { border-color: var(--marca); background: var(--marca-tenue); box-shadow: inset 0 0 0 1px var(--marca); }
+.opcion:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .desglose { margin: 0; padding-left: 18px; }
 
-/* --- Tablas y log --------------------------------------------------------- */
-
-.tabla {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--panel);
-  border: 1px solid var(--borde);
-  border-radius: 12px;
-  padding: 14px;
-  min-width: 0;
+/* Recompensa: el "+3" que sube y se desvanece al acertar. */
+.flotante {
+  position: relative;
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: var(--alza);
+  animation: subir 1100ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
-.lista-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+@keyframes subir {
+  0% { opacity: 0; transform: translateY(14px) scale(0.85); }
+  35% { opacity: 1; transform: translateY(-4px) scale(1.06); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Venta en corto: la casilla de apuesta antes de confirmar. */
+.apuesta {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--regla-fuerte);
+  border-radius: 3px;
+  background: var(--papel);
+  cursor: pointer;
+}
+
+.apuesta.activa { border-color: var(--destacado); background: #fdf6e8; }
+.apuesta input { margin-top: 3px; accent-color: var(--destacado); flex-shrink: 0; }
+.apuesta span { display: flex; flex-direction: column; gap: 1px; }
+.apuesta strong { font-size: 0.95rem; }
+.apuesta em { font-style: normal; font-size: 0.8rem; color: var(--tinta-media); }
+
+/* Aviso de caída de conexión: manda sobre todo lo demás. */
+.aviso-conexion {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding: 10px 16px;
+  background: var(--baja);
+  color: #fff;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+/* --- Rumor de sector ------------------------------------------------------ */
+
+.card.rumor { border-color: var(--destacado); border-width: 2px; }
+
+.rumor-eyebrow {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--destacado);
+}
+
+.rumor-titulo { margin: 0; font-size: 1.2rem; font-weight: 700; line-height: 1.25; }
+
+.buscador.compacto { width: auto; padding: 6px 8px; font-size: 0.8rem; }
+
+/* En el proyector el rumor manda: es el momento en que todos deben decidir. */
+.rumor-banner {
+  border: 2px solid var(--destacado);
+  background: #fdf6e8;
+  padding: 14px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 20px;
+  animation: entrar 400ms ease-out;
+}
+
+.rumor-banner .rumor-titular {
+  margin: 0;
+  font-size: clamp(1.3rem, 2.8vw, 2.2rem);
+  font-weight: 700;
+  margin-right: auto;
+}
+
+.rumor-banner .rumor-reloj {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: clamp(1rem, 1.8vw, 1.4rem);
+  font-weight: 600;
+  color: var(--destacado);
+}
+
+.rumor-banner.sorteando .rumor-reloj { animation: latir 1s ease-in-out infinite; }
+
+@keyframes latir {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.rumor-banner.resuelto.cae { border-color: var(--baja); background: #fdeeee; }
+.rumor-banner.resuelto.cae .rumor-eyebrow,
+.rumor-banner.resuelto.cae .rumor-reloj { color: var(--baja); }
+.rumor-banner.resuelto.aguanta { border-color: var(--alza); background: #ecf7f2; }
+.rumor-banner.resuelto.aguanta .rumor-eyebrow,
+.rumor-banner.resuelto.aguanta .rumor-reloj { color: var(--alza); }
+
+/* --- Cierre de ronda en el proyector -------------------------------------- */
+
+.cierre-ronda {
+  border: 2px solid var(--marca);
+  padding: 16px 20px;
+  background: var(--papel-alto);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: entrar 500ms ease-out;
+}
+
+.cierre-eyebrow {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--baja);
+}
+
+.cierre-texto { margin: 0; font-size: clamp(1.2rem, 2.4vw, 1.9rem); font-weight: 700; }
+.cierre-texto strong { font-family: var(--mono); }
+.cierre-lider { margin: 0; font-size: clamp(0.95rem, 1.6vw, 1.2rem); color: var(--tinta-media); }
+.cierre-lider strong { font-family: var(--mono); color: var(--alza); }
+
+/* --- Tablas (rankings y log) ---------------------------------------------- */
+
+.tabla { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+/* Los dos rankings miden cosas distintas y estaban pareciendo la misma tabla
+   partida en dos. El título manda de verdad y el subtítulo dice qué se mide. */
+.tabla-titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 3px solid var(--marca);
+  padding-bottom: 8px;
+}
+
+.tabla h3 {
+  margin: 0;
+  font-family: var(--texto);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--marca);
+  border: 0;
+  padding: 0;
+}
+
+.tabla-sub {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--tinta-tenue);
+}
+
+.lista-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 
 .lista-rank li {
   display: grid;
-  grid-template-columns: 2ch 8ch 1fr auto;
-  gap: 10px;
+  grid-template-columns: 1.8rem auto 1fr 2.6rem auto 0.9rem;
   align-items: baseline;
-  padding: 8px 10px;
-  background: var(--panel-2);
-  border-radius: 6px;
+  gap: 10px;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--regla);
 }
 
-.lista-rank .pos { color: var(--tenue); }
-.lista-rank .tick { color: var(--verde); font-weight: 700; }
-.lista-rank .nom { color: var(--tenue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lista-rank .val { font-weight: 700; white-space: nowrap; }
+.lista-rank .pos { color: var(--tinta-tenue); font-size: 0.8rem; }
+.lista-rank .tick { font-weight: 600; }
+.lista-rank .nom {
+  color: var(--tinta-media);
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lista-rank .val { font-weight: 600; white-space: nowrap; }
 
-.lista-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+/* Cabecera de columnas, como en una tabla de cotizaciones de prensa. */
+.lista-rank li.cabecera {
+  border-bottom: 1px solid var(--marca);
+  padding-bottom: 4px;
+}
+
+.lista-rank li.cabecera span {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tinta-tenue);
+}
+
+/* Sectores codificados por color: el rumor habla de sectores, así que la sala
+   necesita reconocerlos de un vistazo. */
+.sector {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 2px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+}
+
+.sector-analitica { color: #2f6f8f; }
+.sector-macro { color: #7a5490; }
+.sector-alternativas { color: #8a6420; }
+.sector-capitales { color: #2c7a63; }
+
+/* Franja de indicadores del proyector. */
+.resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1px;
+  background: var(--regla);
+  border: 1px solid var(--regla);
+}
+
+.indicador {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: var(--papel-alto);
+}
+
+.indicador-etiqueta {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--tinta-tenue);
+}
+
+.indicador-valor {
+  font-family: var(--mono);
+  font-size: clamp(1.3rem, 2.6vw, 2rem);
+  font-weight: 600;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.indicador-pie { font-size: 0.78rem; color: var(--tinta-media); }
+
+/* Instrucciones plegables del celular. */
+.instrucciones { padding: 0; }
+
+.instrucciones-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--tinta);
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.instrucciones-toggle .chevron { font-size: 1.1rem; color: var(--tinta-tenue); }
+
+.instrucciones-cuerpo {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.instrucciones-cuerpo p { margin: 0; }
+
+.titulillo {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--tinta-tenue);
+  margin-top: 4px !important;
+}
+
+.pasos { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 7px; }
+.lista-reglas { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+
+.cierre-instrucciones {
+  border-left: 3px solid var(--regla-fuerte);
+  padding-left: 10px;
+  color: var(--tinta-media);
+}
+
+.cierre-participante { border-color: var(--marca); border-width: 2px; }
+
+/* El título del celular esconde el acceso al panel: no debe parecer pulsable. */
+.titulo-app { cursor: default; user-select: none; -webkit-user-select: none; }
+
+/* Cambió de puesto: ▲ o ▼ al margen, como en un tablero de cotizaciones. */
+.lista-rank .mov {
+  font-size: 0.7rem;
+  line-height: 1;
+  text-align: right;
+  opacity: 0;
+}
+
+.lista-rank .mov.sube { color: var(--alza); opacity: 1; animation: asomar 300ms ease-out; }
+.lista-rank .mov.baja { color: var(--baja); opacity: 1; animation: asomar 300ms ease-out; }
+
+@keyframes asomar {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Alguien acaba de ganar puntos: la fila se enciende un momento. */
+.lista-rank li.destello { animation: destello 1200ms ease-out; }
+
+@keyframes destello {
+  0% { background: rgba(10, 125, 75, 0.22); }
+  100% { background: transparent; }
+}
+
+.lista-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 
 .lista-log li {
   display: grid;
-  grid-template-columns: 2ch 1fr auto;
-  gap: 10px;
+  grid-template-columns: 1.4rem 1fr auto;
+  gap: 8px;
   align-items: baseline;
-  padding: 6px 8px;
-  background: var(--panel-2);
-  border-radius: 6px;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--regla);
+  font-size: 0.92rem;
+  animation: entrar 400ms ease-out;
+}
+
+@keyframes entrar {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .lista-log .detalle { overflow-wrap: anywhere; }
-.lista-log .hora { color: var(--tenue); font-size: 0.8rem; white-space: nowrap; }
+.lista-log .hora { color: var(--tinta-tenue); font-size: 0.75rem; white-space: nowrap; }
 
-/* --- Pantalla grande ------------------------------------------------------ */
+/* --- Cinta de teletipo (elemento firma de /display) ----------------------- */
+
+.cinta {
+  overflow: hidden;
+  border-top: 1px solid var(--marca);
+  border-bottom: 1px solid var(--marca);
+  background: var(--marca);
+  color: var(--papel);
+  padding: 7px 0;
+  white-space: nowrap;
+}
+
+.cinta-pista {
+  display: inline-block;
+  padding-left: 100%;
+  animation: desfile 68s linear infinite;
+}
+
+.cinta-item {
+  display: inline-block;
+  padding: 0 1.6rem;
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  border-right: 1px solid rgba(255, 241, 229, 0.25);
+}
+
+.cinta-item .tk { font-weight: 600; }
+.cinta-item .sube { color: #6fe3a8; }
+.cinta-item .plano { color: rgba(255, 241, 229, 0.55); }
+
+@keyframes desfile {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+/* --- Campana de apertura -------------------------------------------------- */
+
+.campana {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.campana-banda {
+  width: 100%;
+  padding: 2.4vh 0;
+  background: var(--marca);
+  color: #fff;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: clamp(1.4rem, 4vw, 3rem);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  animation: barrido 2000ms cubic-bezier(0.7, 0, 0.3, 1) both;
+}
+
+@keyframes barrido {
+  0% { transform: translateX(-100%); }
+  22% { transform: translateX(0); }
+  72% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(0); opacity: 0; }
+}
+
+/* --- Pantalla de proyector ------------------------------------------------ */
 
 .display {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  min-height: 100vh;
+  gap: 18px;
+  padding: 20px 24px 24px;
 }
 
 .display-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 20px;
-  background: var(--panel);
-  border: 1px solid var(--borde);
-  border-radius: 12px;
+  align-items: baseline;
+  gap: 10px 18px;
+  border-bottom: 3px double var(--marca);
+  padding-bottom: 12px;
 }
 
-.display-header h1 { margin: 0; font-size: clamp(1.4rem, 2.6vw, 2.2rem); }
+.display-header h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.2vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-right: auto;
+}
 
 .estado {
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  font-size: clamp(0.8rem, 1.4vw, 1.1rem);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding: 5px 12px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
 }
 
-.estado-esperando { background: rgba(255, 200, 87, 0.18); color: var(--ambar); }
-.estado-activo { background: rgba(53, 208, 127, 0.18); color: var(--verde); }
-.estado-cerrado { background: rgba(255, 107, 107, 0.18); color: var(--rojo); }
+.estado-esperando { color: var(--destacado); }
+.estado-activo { color: var(--alza); }
+.estado-cerrado { color: var(--baja); }
 
-.bull-run {
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: var(--verde);
-  color: #06101f;
-  font-weight: 800;
-  font-size: clamp(0.85rem, 1.6vw, 1.25rem);
-}
 
-.conteo { margin-left: auto; color: var(--tenue); }
+.conteo { font-family: var(--mono); font-size: 0.85rem; color: var(--tinta-tenue); }
 
-.display-tablas { display: grid; grid-template-columns: 1fr; gap: 16px; }
-.display-pie { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.display-tablas { display: grid; grid-template-columns: 1fr; gap: 18px; }
+.display-pie { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
 
 .qr {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  background: var(--panel);
-  border: 1px solid var(--borde);
-  border-radius: 12px;
+  gap: 8px;
   padding: 14px;
+  border: 1px solid var(--regla-fuerte);
+  background: #fff;
 }
 
-.qr h3 { margin: 0; }
-.qr .url { margin: 0; color: var(--tenue); font-size: 0.85rem; overflow-wrap: anywhere; text-align: center; }
+.qr h3 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--tinta-tenue);
+}
 
-/* --- Pantallas grandes ---------------------------------------------------- */
+.url { margin: 0; font-family: var(--mono); font-size: 0.7rem; color: var(--tinta-tenue); overflow-wrap: anywhere; }
+
+/* --- Panel del host ------------------------------------------------------- */
+
+.host-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--regla);
+  border-bottom: 2px solid var(--marca);
+}
+
+.host-estado {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--tinta-media);
+  margin: 0;
+  margin-right: auto;
+}
+
+.host-estado strong { color: var(--marca); }
+
+.host-grupo { display: flex; align-items: center; gap: 6px; }
+
+.host-grupo .etiqueta {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tinta-tenue);
+}
+
+.host-cols { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
+
+.panel-scroll { max-height: 340px; overflow-y: auto; }
+
+.zona-riesgo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--regla);
+}
+
+.zona-riesgo .ayuda { font-size: 0.8rem; }
+
+/* La columna derecha del host apila rankings y log con el mismo aire. */
+.host-cols-derecha { display: flex; flex-direction: column; gap: 18px; }
+
+/* Dentro del panel del host no cabe dos rankings lado a lado: van uno debajo
+   del otro aunque la ventana sea ancha. */
+.host-cols-derecha .display-tablas { grid-template-columns: 1fr; gap: 20px; }
+
+/* Señal de madurez: le dice al anfitrión cuándo el rumor va a valer la pena. */
+.madurez {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--regla-fuerte);
+  border-left: 3px solid var(--regla-fuerte);
+  border-radius: 3px;
+  background: var(--papel-alto);
+}
+
+.madurez.lista { border-left-color: var(--alza); }
+.madurez.inminente { border-left-color: var(--destacado); background: #fdf6e8; }
+.madurez.congelado { border-left-color: var(--marca); }
+
+/* Barra de avance con los hitos marcados: se ve cuánto falta para el siguiente. */
+.madurez-barra {
+  position: relative;
+  flex: 1 1 160px;
+  height: 6px;
+  min-width: 120px;
+  background: var(--regla);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.madurez-barra .relleno {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--marca);
+  transition: width 400ms ease;
+}
+
+.madurez-barra .hito {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--papel-alto);
+}
+
+.madurez-barra .hito.pasado { background: var(--alza); }
+
+.madurez-conteo .fuerte { color: var(--marca); font-weight: 600; }
+
+.madurez .etiqueta {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tinta-tenue);
+}
+
+.madurez-estado { font-size: 0.9rem; margin-right: auto; }
+.madurez.inminente .madurez-estado { color: var(--destacado); font-weight: 700; }
+.madurez.congelado .madurez-estado { color: var(--marca); font-weight: 600; }
+
+.madurez-conteo { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.madurez-conteo span {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--tinta-tenue);
+}
+
+.madurez-conteo span.ok { color: var(--alza); font-weight: 600; }
+
+.host-pantallas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.host-pantallas .etiqueta {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tinta-tenue);
+  margin-right: 2px;
+}
+
+/* Los enlaces que se ven como botones necesitan comportarse como botones. */
+a.boton { display: inline-block; text-decoration: none; }
+
+/* El log del host se queda dentro de su panel en vez de estirar la página. */
+.host-cols-derecha .lista-log { max-height: 300px; overflow-y: auto; }
+
+/* --- Escritorio ----------------------------------------------------------- */
 
 @media (min-width: 900px) {
-  .display-tablas { grid-template-columns: 1fr 1fr; flex: 1; }
-  .display-pie { grid-template-columns: 3fr 1fr; }
-  .display .tabla { font-size: clamp(1rem, 1.35vw, 1.5rem); }
-  .display .tabla h3 { font-size: clamp(1.1rem, 1.6vw, 1.8rem); }
+  .display-tablas { grid-template-columns: 1fr 1fr; gap: 28px; }
+  .host-cols-derecha .display-tablas { grid-template-columns: 1fr; gap: 20px; }
+  .display-pie { grid-template-columns: 2fr 1fr; gap: 28px; }
+  .host-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
+  .display-header h1 { font-size: clamp(2rem, 3.4vw, 3rem); }
+  .lista-rank li { font-size: 1.15rem; padding: 9px 4px; }
+  .cinta-item { font-size: 1.15rem; }
+}
+
+/* La sala mira de lejos: en pantallas grandes todo crece. */
+@media (min-width: 1400px) {
+  .display { padding: 28px 40px; }
+  .lista-rank li { font-size: 1.4rem; }
+  .lista-log li { font-size: 1.1rem; }
+}
+
+/* --- Accesibilidad -------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .cinta-pista { padding-left: 0; }
 }

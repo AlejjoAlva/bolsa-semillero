@@ -5,6 +5,8 @@ export const CATEGORIAS = [
   { key: 'ciudad', pregunta: (t) => `¿De qué ciudad viene $${t}?` },
 ]
 
+import { esActivo } from './participantes.js'
+
 const limpio = (v) => (typeof v === 'string' ? v.trim() : '')
 const clave = (v) => limpio(v).toLowerCase()
 
@@ -25,6 +27,7 @@ function distractores(categoria, target, todos) {
 
   for (const p of todos) {
     if (p.ticker === target.ticker) continue
+    if (!esActivo(p)) continue // a quien sacaron del mercado no se le usan las respuestas
     const valor = limpio(p.private_answers?.[categoria])
     if (!valor) continue
     if (vistas.has(clave(valor))) continue

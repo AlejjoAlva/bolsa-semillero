@@ -1,6 +1,12 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth'
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
+import {
+  connectFirestoreEmulator,
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
 
 // ---------------------------------------------------------------------------
 // La config sale del archivo .env (ver README §1.2). No hay valores por defecto
@@ -27,7 +33,29 @@ const firebaseConfig = Object.fromEntries(
 
 export const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
-export const db = getFirestore(app)
+/**
+ * Caché persistente en el navegador. Al recargar la página, los listeners se
+ * reanudan desde lo que ya está guardado y Firestore entrega solo lo que cambió
+ * desde entonces, en vez de mandar la colección entera otra vez. Con 35
+ * celulares que recargan durante la actividad, es el ahorro más grande que se
+ * puede hacer SIN tocar la inmediatez: la escucha sigue siendo en vivo y los
+ * datos siguen llegando al instante.
+ *
+ * Si el navegador no deja usar IndexedDB (modo privado en algunos casos), cae a
+ * la caché en memoria y todo sigue funcionando igual, solo que sin el ahorro.
+ */
+function abrirFirestore() {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    })
+  } catch (err) {
+    console.warn('Sin caché persistente; sigo con la de memoria.', err)
+    return getFirestore(app)
+  }
+}
+
+export const db = abrirFirestore()
 
 export const USING_EMULATOR = import.meta.env.VITE_USE_EMULATOR === 'true'
 

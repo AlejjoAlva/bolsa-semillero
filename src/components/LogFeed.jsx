@@ -1,4 +1,12 @@
-const ICONO = { registro: '🎉', inversion: '📈', bull_run: '🚀' }
+const ICONO = {
+  registro: '🎉',
+  inversion: '📈',
+  mercado: '🚪',
+  reinicio: '♻️',
+  correccion: '📉',
+  ajuste: '⚖️',
+  fin: '🏁',
+}
 
 function hora(ts) {
   const ms = ts?.toMillis?.()

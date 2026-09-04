@@ -39,7 +39,12 @@ export function generarTicker(nombre, existentes) {
   return null
 }
 
-/** ID compuesto y determinístico de una inversión. */
-export function idInversion(investor, target) {
-  return `${investor}_${target}`
+/**
+ * ID compuesto y determinístico de una inversión.
+ * Incluye la ronda: al reiniciar la partida sube el contador, así que el ID
+ * cambia y todo el mundo puede volver a invertir en la misma gente sin que
+ * choque con el documento de la ronda anterior (que nadie puede borrar).
+ */
+export function idInversion(investor, target, ronda = 1) {
+  return `${investor}_${target}_r${ronda}`
 }

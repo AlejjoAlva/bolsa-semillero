@@ -4,6 +4,7 @@ import Participant from './routes/Participant'
 import Display from './routes/Display'
 import Host from './routes/Host'
 import { CONFIG_FALTANTE, ensureAnonAuth } from './lib/firebase'
+import AvisoConexion from './components/AvisoConexion'
 
 export default function App() {
   const [estado, setEstado] = useState('cargando') // cargando | listo | error
@@ -55,6 +56,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <AvisoConexion />
       <Routes>
         <Route path="/" element={<Participant />} />
         <Route path="/display" element={<Display />} />

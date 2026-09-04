@@ -9,7 +9,7 @@ Tres rutas, una sola SPA:
 |------------|---------------------------|-----------------------------------------------------------------------|
 | `/`        | Celular del participante  | Registro, perfil, buscar a alguien e invertir (quiz)                   |
 | `/display` | Proyector                 | Estado del mercado, dos rankings, log en vivo, QR de registro          |
-| `/host`    | Tu laptop                 | Abrir/cerrar mercado, Bull Run de 5 min, log completo (pide contraseña)|
+| `/host`    | Tu laptop                 | Abrir/cerrar mercado, lanzar rumores, cierre volátil, reiniciar, sacar gente (pide contraseña)|
 
 Stack: Vite + React + react-router · Firestore (listeners en vivo) · Firebase Auth anónima ·
 Firebase Hosting. **Sin Cloud Functions**: toda la lógica corre en el cliente y escribe directo a
@@ -230,7 +230,41 @@ el quiz siempre traiga la respuesta correcta más distractores ajenos y sin repe
 
 ---
 
+## 2.5 Ensayar el evento (rondas y participantes falsos)
+
+**Reiniciar partida** (en `/host`) pone en cero puntos, rachas e inversiones recibidas de todo el
+mundo y sube el número de **ronda** en `session/main`. Nadie pierde su registro ni su ticker.
+
+No borra nada, y eso es a propósito: las reglas de Firestore no permiten borrar desde el navegador
+y no queremos que lo permitan — con la contraseña de `/host` siendo solo de interfaz, un botón de
+borrado sería un botón para tumbar el evento desde la consola. En vez de borrar, el ID de cada
+inversión lleva la ronda (`ANA10_BET60_r2`), así que al subir de ronda todas las inversiones
+anteriores dejan de contar y se puede volver a invertir en la misma gente. El log filtra por ronda:
+lo viejo sigue en la base, pero deja de mostrarse.
+
+Para ensayar con el mercado lleno sin reunir a 30 personas:
+
+```bash
+npm run seed                # 12 participantes falsos en el proyecto real
+npm run seed -- --n 25      # 25
+npm run seed -- --limpiar   # los saca a todos del mercado (no los borra)
+```
+
+El script entra con un usuario anónimo normal, no con credenciales de administrador: solo puede
+hacer lo que las reglas permiten. Los sembrados quedan marcados con `seed: true`.
+
+> Ojo con el límite de **100 cuentas anónimas nuevas por hora y por IP**: cada ejecución del script
+> gasta una, y cada celular que se registra gasta otra. No hagas ensayos masivos el mismo día del
+> evento desde el mismo wifi.
+
+---
+
 ## 3. Reglas del juego (como quedaron implementadas)
+
+**Áreas** — las cuatro del semillero: Macroeconomía, divisas y commodities · Inversiones
+alternativas · Analítica de negocios · Mercado de capitales. Viven en `src/lib/areas.js` con tres
+nombres cada una (oficial, corto para titulares y sigla de 3 letras para las tablas). El rumor de
+sector y el bono de cruce se apoyan en este campo.
 
 **Registro** — nombre, área, nuevo/antiguo y 4 respuestas privadas (comida, superpoder, anécdota,
 ciudad). El ticker son las 3 primeras letras del nombre sin tildes + 2 dígitos (`ANA47`); si ese
@@ -245,16 +279,48 @@ memoria una pregunta de 3 opciones sobre una de sus 4 respuestas privadas, con d
 tomados de otros participantes. La pregunta se congela al abrir: no cambia mientras eligen.
 
 **Puntos** — 2 base · +1 si es cruce nuevo↔antiguo · +1 cada vez que la racha llega a múltiplo de
-3 · todo x2 si hay Bull Run vigente. Todo se calcula y se escribe dentro de una `runTransaction`
-que además crea `investments/{investor}_{target}`: por el ID compuesto, **nadie puede invertir dos
-veces en la misma persona**, ni siquiera dando doble tap.
+3. Todo se calcula y se escribe dentro de una `runTransaction` que además crea
+`investments/{investor}_{target}_r{ronda}`: por el ID compuesto, **nadie puede invertir dos veces
+en la misma persona dentro de una ronda**, ni siquiera dando doble tap.
 
-**Si fallan** — no se crea la inversión (pueden reintentar con esa persona más tarde) pero la
-racha se va a 0.
+**Venta en corto** — antes de responder se puede marcar la apuesta: acertar paga el doble, fallar
+cuesta 2 puntos. El castigo es elegido, así que nunca se siente injusto.
 
-**Host** — "Iniciar juego" abre el mercado, "Cerrar mercado" bloquea nuevas inversiones en todos
-los celulares al instante, "Activar Bull Run" da 5 minutos de puntos dobles y lo anuncia en el log
-y en la pantalla grande con cuenta regresiva.
+**Si fallan** — no se crea la inversión (pueden reintentar con esa persona más tarde), la racha se
+va a 0 y, si habían apostado, pierden 2 puntos. Los puntos nunca bajan de 0.
+
+**Corrección por sobrecompra** — cuando alguien llega a 6 inversiones recibidas, su acción se
+declara sobrevalorada y **todos los que ya invirtieron en ella pierden 1 punto**. Premia descubrir
+a quien nadie ha buscado y castiga a la manada. La marca `correccion_ronda` la hace idempotente:
+si dos personas cruzan el umbral a la vez, el castigo se aplica una sola vez.
+
+**Rumor de sector** — el anfitrión lanza un rumor sobre un área ("dicen que Macro se va a
+desplomar") con 3 minutos de reloj. Cada quien elige **Mantener** o **Liquidar** en su celular; no
+elegir es mantener. Al vencer el plazo el proyector **sortea** si era cierto:
+
+| | Rumor cierto | Rumor falso |
+|---|---|---|
+| **Mantener** | −1 por cada persona de ese sector en tu portafolio | +1 por cada una |
+| **Liquidar** | 0, te blindaste | −1 de comisión |
+
+**El rumor se lanza solo.** El panel del host vigila la madurez del mercado y dispara el rumor
+—sorteando el sector— en cuanto **al menos el 30% de la sala (mínimo 3 personas) tiene exposición
+a un mismo sector**. Antes de eso el rumor no movería nada y el momento se desperdiciaría. El panel
+muestra el conteo por sector para que sepas cuánto falta. El disparo automático ocurre **una sola
+vez por ronda**; los siguientes rumores los lanzas tú a mano.
+
+Quien no tenga a nadie de ese sector no se ve afectado. Mientras corre el reloj el mercado sigue
+abierto, así que se puede correr a aumentar exposición o a huir a otro sector. El sorteo lo dispara
+el panel del host al vencer el plazo, y es idempotente.
+
+**Fin de la ronda** — el juego se cierra **solo** en cuanto alguien ha invertido en todo el
+mercado. Se anuncia en la pantalla grande, pero **gana quien tenga más puntos**, no quien completó.
+
+**Cierre volátil** — con el mercado ya cerrado, el anfitrión aplica el ajuste final: las 3 acciones
+más compradas pierden 2 puntos y las 3 menos buscadas ganan 2. Una sola vez por ronda.
+
+**Host** — abrir y cerrar el mercado, lanzar el rumor de sector, aplicar el cierre volátil, sacar
+y devolver gente, y reiniciar la partida.
 
 ---
 
@@ -267,7 +333,8 @@ y en la pantalla grande con cuenta regresiva.
 3. Deja que todos se registren con el mercado en `esperando`. Van a ver su ticker y el mensaje
    "El mercado abre pronto".
 4. Explica la mecánica → **Iniciar juego**.
-5. A mitad de la actividad, cuando decaiga la energía → **Activar Bull Run**. Anúncialo en voz alta.
+5. A mitad de la actividad, cuando ya haya portafolios armados → **lanzar un rumor de sector**.
+   Anúncialo en voz alta: es el momento en que todos tienen que decidir y moverse.
 6. **Cerrar mercado** al final. Los rankings quedan congelados en `/display` para premiar.
 
 **Si algo falla**: casi todo se arregla recargando la página (los datos viven en Firestore, no en
@@ -304,6 +371,9 @@ detecta que el ticker guardado ya no existe y devuelve a la gente al formulario.
   Para 30-40 personas el plan gratuito sobra. Después del evento conviene dejar las reglas en
   solo lectura.
 - No hay detección automática de trampa: el log queda completo en `/host` para revisarlo a ojo.
+- **Sacar a alguien del mercado no lo borra**, solo le pone `activo: false`. Deja de aparecer en
+  rankings, listas y quizzes, y conserva sus puntos por si hay que devolverlo. Lo mismo aplica a
+  `npm run seed -- --limpiar`: los falsos siguen en la base, apagados.
 
 ---
 
@@ -315,7 +385,7 @@ src/
   components/  RegisterForm · InvestModal · Leaderboard · LogFeed
   lib/
     firebase.js   init de app, auth anónima, conexión al emulador
-    data.js       hooks de listeners (session, participants, logs) y utilidades de bull run
+    data.js       hooks de listeners (session, participants, logs) y utilidades de tiempo
     acciones.js   escrituras: registrar, invertir, romper racha, controles del host
     puntaje.js    reglas de puntos (puras, sin Firebase — lo que prueban los tests)
     ticker.js     generación de tickers e ID de inversión
