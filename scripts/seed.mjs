@@ -15,7 +15,7 @@ const API_KEY = process.env.VITE_FB_API_KEY
 const PROJECT = process.env.VITE_FB_PROJECT_ID
 
 if (!API_KEY || !PROJECT) {
-  console.error('Faltan VITE_FB_API_KEY / VITE_FB_PROJECT_ID. ¿Existe el archivo .env? (ver README §1.2)')
+  console.error('Faltan VITE_FB_API_KEY / VITE_FB_PROJECT_ID. ¿Existe el archivo .env? (ver docs/replicar.md §1.2)')
   process.exit(1)
 }
 

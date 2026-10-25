@@ -27,7 +27,7 @@ export default function App() {
         <div className="card">
           <p className="error">
             Falta config de Firebase en el build: {CONFIG_FALTANTE.join(', ')}. Llena el archivo{' '}
-            <code>.env</code> (ver README §1.2) y vuelve a correr <code>npm run build</code>.
+            <code>.env</code> (ver docs/replicar.md §1.2) y vuelve a correr <code>npm run build</code>.
           </p>
         </div>
       </main>

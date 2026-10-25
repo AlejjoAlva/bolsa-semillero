@@ -118,7 +118,7 @@ function EmpezarDeCero({ ocupado, cuantos, onEmpezar }) {
         </p>
         <p className="ayuda">
           Los documentos antiguos siguen en la base, invisibles para la app. Borrarlos de verdad
-          solo se puede desde la terminal (ver README §4.5).
+          solo se puede desde la terminal (ver docs/operacion.md).
         </p>
         <button className="boton compacto peligro" disabled={ocupado} onClick={() => setAbierto(true)}>
           Empezar de cero

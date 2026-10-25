@@ -76,7 +76,7 @@ export async function registrarParticipante({ nombre, area, seniority, respuesta
   // La generación en la que se inscribe esta persona. "Empezar de cero" sube el
   // contador de la sesión, así que los registros de ensayos anteriores quedan
   // con una generación vieja y el panel deja de mostrarlos. No se borra nada:
-  // las reglas no permiten borrar desde el cliente (ver README §4.5).
+  // las reglas no permiten borrar desde el cliente (ver docs/operacion.md).
   const sesionSnap = await getDoc(sessionRef())
   const generacion = (sesionSnap.exists() ? sesionSnap.data().generacion : 0) ?? 0
 
@@ -456,7 +456,7 @@ export async function reiniciarPartida() {
  * nuevo. Pensado para dejar la app limpia entre ensayos.
  *
  * No borra documentos, porque las reglas no permiten borrar desde el cliente
- * (ver README §5): abrir ese permiso dejaría que cualquiera vaciara el juego
+ * (ver docs/seguridad-y-limites.md): abrir ese permiso dejaría que cualquiera vaciara el juego
  * desde la consola del navegador a mitad del evento, ya que la contraseña de
  * /host es solo de interfaz. En su lugar todos quedan `activo: false` y en
  * ceros, con lo que desaparecen de listas, quizzes y rankings; y la sesión sube
@@ -464,7 +464,7 @@ export async function reiniciarPartida() {
  * vuelva a la pantalla de registro.
  *
  * Para un borrado físico de la base están los comandos `firebase
- * firestore:delete` del README, que corren fuera de la app.
+ * firestore:delete` de docs/operacion.md, que corren fuera de la app.
  *
  * Devuelve { retirados, ronda, generacion }.
  */

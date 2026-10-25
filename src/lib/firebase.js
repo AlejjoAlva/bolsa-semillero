@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore'
 
 // ---------------------------------------------------------------------------
-// La config sale del archivo .env (ver README §1.2). No hay valores por defecto
+// La config sale del archivo .env (ver docs/replicar.md §1.2). No hay valores por defecto
 // a propósito: si falta alguno, la app lo dice en pantalla en vez de arrancar
 // apuntando a un proyecto que no existe.
 // ---------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+rules_version = '2';
+// Reglas de ARCHIVO: base en solo lectura una vez terminado el evento.
+// Para usarlas: copiar este archivo sobre firestore.rules y ejecutar
+//   firebase deploy --only firestore:rules
+// Para volver a jugar, restaurar firestore.rules desde git.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{coleccion}/{doc=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

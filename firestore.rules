@@ -1,11 +1,33 @@
 rules_version = '2';
-// Evento terminado (2026-09-04): base en solo lectura desde 2026-10-23.
-// Para reabrirla, recuperar las reglas de escritura del commit 447aea4 y desplegar.
+// Reglas de juego (las que se usaron en el evento). Después de la actividad conviene desplegar
+// firestore.rules.solo-lectura para cerrar la escritura. Ver docs/seguridad-y-limites.md.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{coleccion}/{doc=**} {
+
+    match /participants/{ticker} {
       allow read: if request.auth != null;
-      allow write: if false;
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.points == 0
+                    && request.resource.data.received_count == 0;
+      allow update: if request.auth != null;
+    }
+
+    match /investments/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    match /logs/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    match /session/main {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }

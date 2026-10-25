@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "node --test tests/*.test.mjs",
-    "emu": "firebase emulators:start --only auth,firestore",
+    "emu": "firebase emulators:start --project demo-bolsa --only auth,firestore",
     "seed": "node --env-file=.env scripts/seed.mjs"
   },
   "dependencies": {
